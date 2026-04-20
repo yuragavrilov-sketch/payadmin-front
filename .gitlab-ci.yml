@@ -69,7 +69,15 @@ npm_install:
   script:
     - node --version
     - npm --version
-    - npm ci
+    # Lockfile генерится локально с registry.npmjs.org — переписываем resolved-URL'ы
+    # на внутренний Nexus, иначе CI не достучится наружу.
+    - sed -i 's|https://registry.npmjs.org/|https://nexus.online.tkbbank.ru/repository/npmjs/|g' package-lock.json
+    - npm ci --no-audit --no-fund --loglevel=verbose
+  artifacts:
+    when: on_failure
+    paths:
+      - npm-debug.log
+    expire_in: 1 day
 
 npm_lint:
   extends: .npm_runner
