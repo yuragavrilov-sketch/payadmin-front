@@ -5,3 +5,8 @@ dist-ssr
 .vite
 .DS_Store
 *.log
+
+# TypeScript build artefacts
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.js

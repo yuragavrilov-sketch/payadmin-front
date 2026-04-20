@@ -1,0 +1,163 @@
+stages:
+  - npm_install
+  - npm_test
+  - npm_build
+  - docker_build
+  - docker_tag
+  - helm_deploy
+
+variables:
+  IMAGE_REGISTRY: harbor.online.tkbbank.ru
+  IMAGE_REGISTRY_PROJECT: tkbpay
+  IMAGE_NAME: $IMAGE_REGISTRY/$IMAGE_REGISTRY_PROJECT/$CI_PROJECT_NAME
+  NODE_IMAGE: $IMAGE_REGISTRY/library/node:22.13.1-alpine
+  NGINX_IMAGE: $IMAGE_REGISTRY/library/nginx:1.27-alpine
+  CHART_REPO: https://harbor.online.tkbbank.ru/chartrepo/kubernetes
+  CHART_NAME: kubernetes/payform
+  CHART_VERSION: "0.0.9"
+  NAMESPACE: payform-refactoring
+  REVISION: "1.0.0"
+
+# ── Базовые шаблоны ────────────────────────────────────────────────────────
+.runner:template:
+  tags:
+    - tkbpay
+    - docker
+
+# Node-runner: ставит CA-сертификат, кеширует node_modules между стадиями.
+.npm_runner:
+  extends: .runner:template
+  image: $NODE_IMAGE
+  before_script:
+    - if [ -n "$CERT" ]; then
+        echo "$CERT" > /tmp/ca-cert.pem;
+        export NODE_EXTRA_CA_CERTS=/tmp/ca-cert.pem;
+        npm config set cafile /tmp/ca-cert.pem;
+      fi
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+    policy: pull
+
+# Docker-runner: для сборки/пуша образов через DinD.
+.docker_runner:
+  extends: .runner:template
+  image: $IMAGE_REGISTRY/library/docker:25.0.3
+  services:
+    - name: $IMAGE_REGISTRY/library/docker:25.0.3-dind
+      alias: docker
+      command: ["--tls=false", "--insecure-registry=harbor.online.tkbbank.ru"]
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
+
+# ── Стадии ────────────────────────────────────────────────────────────────
+npm_install:
+  extends: .npm_runner
+  stage: npm_install
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+    policy: pull-push
+  script:
+    - node --version
+    - npm --version
+    - npm ci
+
+npm_lint:
+  extends: .npm_runner
+  stage: npm_test
+  script:
+    - npm run lint
+
+npm_typecheck:
+  extends: .npm_runner
+  stage: npm_test
+  script:
+    - npm run typecheck
+
+npm_build:
+  extends: .npm_runner
+  stage: npm_build
+  script:
+    - test -f .env
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 30 mins
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^feature\/.*/
+
+docker_build:
+  extends: .docker_runner
+  stage: docker_build
+  dependencies:
+    - npm_build
+  variables:
+    IMAGE_TAG: $REVISION-$CI_COMMIT_SHORT_SHA
+  before_script:
+    - export DOCKER_BUILDKIT=0
+    - export COMPOSE_DOCKER_CLI_BUILD=0
+    - echo $IMAGE_REGISTRY_PASSWORD | docker login -u $IMAGE_REGISTRY_USERNAME --password-stdin $IMAGE_REGISTRY
+  script:
+    - export DATE="$(date +%Y%m%d%H%M)"
+    - docker build
+        --build-arg NGINX_IMAGE="$NGINX_IMAGE"
+        -t $IMAGE_NAME:$IMAGE_TAG
+        -t $IMAGE_NAME:$IMAGE_TAG-$DATE
+        .
+    - docker push $IMAGE_NAME:$IMAGE_TAG
+    - docker push $IMAGE_NAME:$IMAGE_TAG-$DATE
+    - docker image rm $IMAGE_NAME:$IMAGE_TAG
+    - docker image rm $IMAGE_NAME:$IMAGE_TAG-$DATE
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^feature\/.*/
+
+docker_tag:
+  extends: .docker_runner
+  stage: docker_tag
+  variables:
+    IMAGE_TAG: $CI_COMMIT_TAG-$CI_COMMIT_SHORT_SHA
+  before_script:
+    - export DOCKER_BUILDKIT=0
+    - export COMPOSE_DOCKER_CLI_BUILD=0
+    - echo $IMAGE_REGISTRY_PASSWORD | docker login -u $IMAGE_REGISTRY_USERNAME --password-stdin $IMAGE_REGISTRY
+  script:
+    - docker pull $IMAGE_NAME:$IMAGE_TAG
+    - docker tag  $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:$CI_COMMIT_TAG
+    - docker push $IMAGE_NAME:$CI_COMMIT_TAG
+    - docker image rm $IMAGE_NAME:$CI_COMMIT_TAG
+    - docker image rm $IMAGE_NAME:$IMAGE_TAG
+  rules:
+    - if: $CI_COMMIT_TAG
+
+helm_deploy:
+  extends: .docker_runner
+  stage: helm_deploy
+  variables:
+    IMAGE_TAG: $REVISION-$CI_COMMIT_SHORT_SHA
+    ENV: test
+  script:
+    - K8S_CONFIG=K8S_CONFIG_${ENV}
+    - chmod 0400 $(echo "${!K8S_CONFIG}")
+    - export KUBECONFIG=$(echo "${!K8S_CONFIG}")
+    - helm repo add kubernetes --insecure-skip-tls-verify=true $CHART_REPO
+    - helm upgrade $CI_PROJECT_NAME --install
+        --insecure-skip-tls-verify=true
+        --version=$CHART_VERSION
+        $CHART_NAME
+        --set image.tag=$IMAGE_TAG
+        -f helm/values-$ENV.yaml
+        --namespace=$NAMESPACE
+  when: manual
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^feature\/.*/

@@ -1,0 +1,48 @@
+# Helm values для test-окружения. Чарт: kubernetes/payform.
+# Поправь поля под фактическую схему чарта (image.repository, ingress.host и т.д.).
+
+image:
+  repository: harbor.online.tkbbank.ru/tkbpay/payadmin-front
+  pullPolicy: IfNotPresent
+  # tag подставляется в pipeline через --set image.tag=...
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: pay-admin.test.tkbbank.ru
+      paths:
+        - path: /
+          pathType: Prefix
+  # tls:
+  #   - secretName: pay-admin-tls
+  #     hosts:
+  #       - pay-admin.test.tkbbank.ru
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 10

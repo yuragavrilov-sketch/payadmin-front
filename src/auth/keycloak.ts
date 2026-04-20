@@ -9,6 +9,17 @@
 const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL || 'http://localhost:8080';
 const REALM = import.meta.env.VITE_KEYCLOAK_REALM || 'pay-admin';
 const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || 'pay-admin-web';
+const AUTH_ENABLED = import.meta.env.VITE_AUTH_ENABLED !== 'false';
+
+// Mock-профиль для VITE_AUTH_ENABLED=false (e2e-тесты, локальный смок без Keycloak).
+const MOCK_PROFILE: UserProfile = {
+  sub: 'mock-operator',
+  email: 'operator@platezh.ru',
+  name: 'Тестовый Оператор',
+  preferred_username: 'operator',
+  realm_access: { roles: ['operator'] },
+};
+const MOCK_TOKEN = 'mock-token-no-keycloak';
 
 const TOKEN_URL = `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`;
 const LOGOUT_URL = `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/logout`;
@@ -75,6 +86,12 @@ function scheduleRefresh(expiresInSec: number) {
 }
 
 export async function login(username: string, password: string): Promise<UserProfile> {
+  if (!AUTH_ENABLED) {
+    accessToken = MOCK_TOKEN;
+    accessTokenExpiresAt = Date.now() + 3600_000;
+    return MOCK_PROFILE;
+  }
+
   const body = new URLSearchParams({
     client_id: CLIENT_ID,
     grant_type: 'password',
@@ -138,6 +155,7 @@ export async function logout(): Promise<void> {
 
 /** Восстановление сессии при старте приложения. */
 export async function restore(): Promise<UserProfile | null> {
+  if (!AUTH_ENABLED) return null;
   if (!refreshToken) return null;
   try {
     await refresh();
@@ -155,6 +173,7 @@ export function getAccessToken(): string | null {
 
 /** Возвращает живой токен — рефрешит, если истёк. */
 export async function getValidToken(): Promise<string | null> {
+  if (!AUTH_ENABLED) return MOCK_TOKEN;
   if (accessToken && Date.now() < accessTokenExpiresAt - 5_000) return accessToken;
   if (!refreshToken) return null;
   try {
