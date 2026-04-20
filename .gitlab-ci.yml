@@ -55,13 +55,10 @@ variables:
 .docker_runner:
   extends: .runner_template
   image: $IMAGE_REGISTRY/library/docker:25.0.3
-  services:
-    - name: $IMAGE_REGISTRY/library/docker:25.0.3-dind
-      alias: docker
-      command: ["--tls=false", "--insecure-registry=harbor.online.tkbbank.ru"]
+  # DinD service в раннере не стартует (не privileged?). Полагаемся на то, что
+  # раннер монтирует host's docker socket в build-контейнер. Если сокета нет —
+  # просим DevOps включить privileged=true либо смонтировать /var/run/docker.sock.
   variables:
-    DOCKER_HOST: "tcp://docker:2375"
-    DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
 
 # ── Стадии ────────────────────────────────────────────────────────────────
@@ -128,21 +125,11 @@ docker_build:
     - export COMPOSE_DOCKER_CLI_BUILD=0
     - |
       set +e
-      echo "── DinD diagnostic ──"
-      echo "hostname: $(hostname)"
-      echo "DOCKER_HOST=$DOCKER_HOST"
-      echo "── /etc/hosts ──"
-      cat /etc/hosts
-      echo "── /etc/resolv.conf ──"
-      cat /etc/resolv.conf
-      echo "── resolve 'docker' ──"
-      getent hosts docker || echo "  (not resolvable)"
-      echo "── resolve 'localhost' ──"
-      getent hosts localhost
-      echo "── docker version (через DOCKER_HOST=$DOCKER_HOST) ──"
-      docker version 2>&1 | head -20 || true
-      echo "── docker version (через tcp://localhost:2375) ──"
-      DOCKER_HOST=tcp://localhost:2375 docker version 2>&1 | head -20 || true
+      echo "── docker access diagnostic ──"
+      echo "DOCKER_HOST=${DOCKER_HOST:-(unset, defaults to unix:///var/run/docker.sock)}"
+      ls -la /var/run/docker.sock 2>&1 || echo "  /var/run/docker.sock — нет"
+      echo "── docker version ──"
+      docker version 2>&1 | head -20
       echo "─────────────────────"
       set -e
     - echo $IMAGE_REGISTRY_PASSWORD | docker login -u $IMAGE_REGISTRY_USERNAME --password-stdin $IMAGE_REGISTRY
