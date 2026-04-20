@@ -27,40 +27,48 @@ variables:
 .npm_runner:
   extends: .runner_template
   image: $NODE_IMAGE
+  variables:
+    NEXUS_HOST: nexus.online.tkbbank.ru
   before_script:
     - apk add --no-cache openssl ca-certificates >/dev/null
     - |
-      if [ -n "$CERT" ]; then
-        echo "$CERT" > /tmp/ca-cert.pem
-        export NODE_EXTRA_CA_CERTS=/tmp/ca-cert.pem
-        npm config set cafile /tmp/ca-cert.pem
+      # TOFU: вытаскиваем cert chain прямо у Nexus (s_client -showcerts) и
+      # доверяем ему. Корп-Nexus в корп-сети — приемлемо. Когда DevOps пробросит
+      # настоящий root CA TCB-ENT-CA в $CERT, переключим на него.
 
-        # Доустановим CA в системный store (на всякий случай — некоторые
-        # инструменты не смотрят в NODE_EXTRA_CA_CERTS).
-        cp /tmp/ca-cert.pem /usr/local/share/ca-certificates/corp-ca.crt
-        update-ca-certificates 2>/dev/null || true
+      mkdir -p /tmp/ca
+      echo "" | openssl s_client -connect ${NEXUS_HOST}:443 \
+        -servername ${NEXUS_HOST} -showcerts 2>/dev/null \
+        | sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' \
+        > /tmp/ca/from-nexus.pem
 
-        echo "── 1. Что в нашем \$CERT ─────────────────────────────────"
-        echo "NODE_EXTRA_CA_CERTS=$NODE_EXTRA_CA_CERTS"
-        echo "npm cafile = $(npm config get cafile)"
-        echo "npm registry = $(npm config get registry)"
-        echo "cert size: $(wc -c < /tmp/ca-cert.pem) bytes, lines: $(wc -l < /tmp/ca-cert.pem)"
-        grep -E '^-----' /tmp/ca-cert.pem
-        echo "Сертификатов в файле: $(grep -c '^-----BEGIN CERTIFICATE-----' /tmp/ca-cert.pem)"
-        openssl x509 -in /tmp/ca-cert.pem -noout -subject -issuer -dates -fingerprint 2>&1 || echo "  не удалось разобрать как X509"
-
-        echo "── 2. Что реально отдаёт Nexus ──────────────────────────"
-        echo | openssl s_client -connect nexus.online.tkbbank.ru:443 \
-          -servername nexus.online.tkbbank.ru -showcerts 2>/dev/null \
-          | awk '/-----BEGIN CERT/{flag=1} flag; /-----END CERT/{flag=0; print "---"}' \
-          | awk -v RS="---\n" 'NF{print "── cert in chain ──"; print | "openssl x509 -noout -subject -issuer -dates -fingerprint 2>&1"; close("openssl x509 -noout -subject -issuer -dates -fingerprint 2>&1")}'
-
-        echo "── 3. Прямой curl с нашим CA ────────────────────────────"
-        curl -sSI --cacert /tmp/ca-cert.pem https://nexus.online.tkbbank.ru/repository/npmjs/ 2>&1 | head -5 || echo "  curl упал — CA не подходит"
-        echo "─────────────────────────────────────────────────────────"
-      else
-        echo "WARNING: \$CERT не задан — npm пойдёт без корп. CA, ожидайте SELF_SIGNED_CERT_IN_CHAIN"
+      if [ ! -s /tmp/ca/from-nexus.pem ]; then
+        echo "ERROR: не удалось забрать cert chain у ${NEXUS_HOST}"; exit 1
       fi
+
+      # Если в $CERT лежит дополнительный сертификат (например, корп. root CA) —
+      # подкладываем его рядом, npm/Node будут просматривать оба.
+      if [ -n "$CERT" ]; then
+        echo "$CERT" > /tmp/ca/from-var.pem
+      fi
+
+      cat /tmp/ca/*.pem > /tmp/ca-bundle.pem
+      export NODE_EXTRA_CA_CERTS=/tmp/ca-bundle.pem
+      npm config set cafile /tmp/ca-bundle.pem
+
+      echo "── CA bundle ────────────────────────────────────────────"
+      echo "NODE_EXTRA_CA_CERTS=$NODE_EXTRA_CA_CERTS"
+      echo "npm cafile = $(npm config get cafile)"
+      echo "npm registry = $(npm config get registry)"
+      CHAIN_COUNT=$(grep -c '^-----BEGIN CERTIFICATE-----' /tmp/ca-bundle.pem)
+      echo "Сертификатов в bundle: $CHAIN_COUNT"
+      # Разбиваем на отдельные файлы для печати инфо
+      awk 'BEGIN{n=0} /-----BEGIN CERTIFICATE-----/{n++; out=sprintf("/tmp/c-%02d.pem", n)} {print > out}' /tmp/ca-bundle.pem
+      for f in /tmp/c-*.pem; do
+        echo "── $f ──"
+        openssl x509 -in "$f" -noout -subject -issuer -dates -fingerprint 2>&1 || echo "  не x509"
+      done
+      echo "─────────────────────────────────────────────────────────"
   cache:
     key:
       files:
