@@ -1,0 +1,48 @@
+# Helm values для prod-окружения. Чарт: kubernetes/payform.
+# Поправь поля под фактическую схему чарта (image.repository, ingress.host и т.д.).
+
+image:
+  repository: harbor.online.tkbbank.ru/tkbpay/payadmin-front
+  pullPolicy: IfNotPresent
+  # tag подставляется в pipeline через --set image.tag=... (равен $CI_COMMIT_TAG)
+
+replicaCount: 2
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: pay-admin.tkbbank.ru
+      paths:
+        - path: /
+          pathType: Prefix
+  # tls:
+  #   - secretName: pay-admin-tls
+  #     hosts:
+  #       - pay-admin.tkbbank.ru
+
+resources:
+  limits:
+    cpu: 300m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 10

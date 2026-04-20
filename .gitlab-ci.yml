@@ -15,7 +15,8 @@ variables:
   CHART_REPO: https://harbor.online.tkbbank.ru/chartrepo/kubernetes
   CHART_NAME: kubernetes/payform
   CHART_VERSION: "0.0.9"
-  NAMESPACE: payform-refactoring
+  NAMESPACE_TEST: payform-refactoring
+  NAMESPACE_PROD: payform-refactoring
   REVISION: "1.0.0"
 
 # ── Базовые шаблоны ────────────────────────────────────────────────────────
@@ -152,7 +153,7 @@ docker_tag:
   rules:
     - if: $CI_COMMIT_TAG
 
-helm_deploy:
+helm_deploy_test:
   extends: .docker_runner
   stage: helm_deploy
   variables:
@@ -160,12 +161,31 @@ helm_deploy:
   script:
     - export REVISION="${REVISION:-1.0.0}"
     - export IMAGE_TAG="${REVISION}-${CI_COMMIT_SHORT_SHA}"
+    - echo "Deploying $IMAGE_NAME:$IMAGE_TAG to $ENV / $NAMESPACE_TEST"
     - K8S_CONFIG=K8S_CONFIG_${ENV}
     - chmod 0400 $(echo "${!K8S_CONFIG}")
     - export KUBECONFIG=$(echo "${!K8S_CONFIG}")
     - helm repo add kubernetes --insecure-skip-tls-verify=true $CHART_REPO
-    - helm upgrade $CI_PROJECT_NAME --install --insecure-skip-tls-verify=true --version=$CHART_VERSION $CHART_NAME --set image.tag=$IMAGE_TAG -f helm/values-$ENV.yaml --namespace=$NAMESPACE
+    - helm upgrade $CI_PROJECT_NAME --install --insecure-skip-tls-verify=true --version=$CHART_VERSION $CHART_NAME --set image.tag=$IMAGE_TAG -f helm/values-$ENV.yaml --namespace=$NAMESPACE_TEST
   when: manual
   allow_failure: false
   rules:
     - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^feature\/.*/
+
+helm_deploy_prod:
+  extends: .docker_runner
+  stage: helm_deploy
+  variables:
+    ENV: prod
+  script:
+    - export IMAGE_TAG="$CI_COMMIT_TAG"
+    - echo "Deploying $IMAGE_NAME:$IMAGE_TAG to $ENV / $NAMESPACE_PROD"
+    - K8S_CONFIG=K8S_CONFIG_${ENV}
+    - chmod 0400 $(echo "${!K8S_CONFIG}")
+    - export KUBECONFIG=$(echo "${!K8S_CONFIG}")
+    - helm repo add kubernetes --insecure-skip-tls-verify=true $CHART_REPO
+    - helm upgrade $CI_PROJECT_NAME --install --insecure-skip-tls-verify=true --version=$CHART_VERSION $CHART_NAME --set image.tag=$IMAGE_TAG -f helm/values-$ENV.yaml --namespace=$NAMESPACE_PROD
+  when: manual
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+$/
