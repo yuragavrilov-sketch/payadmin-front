@@ -27,62 +27,22 @@ variables:
 .npm_runner:
   extends: .runner_template
   image: $NODE_IMAGE
-  variables:
-    NEXUS_HOST: nexus.online.tkbbank.ru
   before_script:
-    - apk add --no-cache openssl ca-certificates curl >/dev/null
     - |
-      set +e  # GitLab включает -e -o pipefail; нам нужно увидеть все ошибки
-      mkdir -p /tmp/ca
-
-      echo "── 1. Сетевая доступность ${NEXUS_HOST} ────────────────"
-      getent hosts ${NEXUS_HOST} || echo "  DNS lookup FAILED"
-      nc -z -v -w5 ${NEXUS_HOST} 443 2>&1 || echo "  TCP 443 unreachable"
-
-      echo "── 2. openssl s_client → /tmp/sclient.out ──────────────"
-      echo "" | openssl s_client -connect ${NEXUS_HOST}:443 \
-        -servername ${NEXUS_HOST} -showcerts > /tmp/sclient.out 2>&1
-      OPENSSL_RC=$?
-      echo "openssl s_client exit code: $OPENSSL_RC"
-      echo "── первые 25 строк s_client output ──"
-      head -25 /tmp/sclient.out
-
-      echo "── 3. Извлекаем chain ──────────────────────────────────"
-      sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' /tmp/sclient.out > /tmp/ca/from-nexus.pem
-      NEXUS_CERTS=$(grep -c '^-----BEGIN CERTIFICATE-----' /tmp/ca/from-nexus.pem)
-      echo "/tmp/ca/from-nexus.pem: $(wc -c < /tmp/ca/from-nexus.pem) bytes, $NEXUS_CERTS cert(s)"
-
+      set +e
+      echo "── proxy / network env ──"
+      env | grep -iE 'proxy' || echo "  (no proxy vars)"
+      echo "── npm config ──"
+      echo "  registry = $(npm config get registry)"
+      echo "  strict-ssl = $(npm config get strict-ssl)"
+      # Если в $CERT положили правильный root CA — используем его и убираем
+      # strict-ssl=false. До тех пор полагаемся на флаг в .npmrc.
       if [ -n "$CERT" ]; then
-        echo "$CERT" > /tmp/ca/from-var.pem
-        echo "/tmp/ca/from-var.pem: $(wc -c < /tmp/ca/from-var.pem) bytes"
+        echo "$CERT" > /tmp/ca-cert.pem
+        export NODE_EXTRA_CA_CERTS=/tmp/ca-cert.pem
+        npm config set cafile /tmp/ca-cert.pem
+        echo "  cafile = /tmp/ca-cert.pem (cert size: $(wc -c < /tmp/ca-cert.pem)b)"
       fi
-
-      cat /tmp/ca/*.pem > /tmp/ca-bundle.pem 2>/dev/null
-      TOTAL=$(grep -c '^-----BEGIN CERTIFICATE-----' /tmp/ca-bundle.pem 2>/dev/null)
-      TOTAL=${TOTAL:-0}
-      echo "── 4. Итог: /tmp/ca-bundle.pem с $TOTAL cert(s) ────────"
-
-      if [ "$TOTAL" = "0" ]; then
-        echo "FATAL: ни одного cert'а не собрано"
-        exit 1
-      fi
-
-      export NODE_EXTRA_CA_CERTS=/tmp/ca-bundle.pem
-      npm config set cafile /tmp/ca-bundle.pem
-      echo "NODE_EXTRA_CA_CERTS=$NODE_EXTRA_CA_CERTS"
-      echo "npm cafile = $(npm config get cafile)"
-      echo "npm registry = $(npm config get registry)"
-
-      awk 'BEGIN{n=0} /-----BEGIN CERTIFICATE-----/{n++; out=sprintf("/tmp/c-%02d.pem", n)} {print > out}' /tmp/ca-bundle.pem
-      for f in /tmp/c-*.pem; do
-        echo "── $f ──"
-        openssl x509 -in "$f" -noout -subject -issuer -dates -fingerprint 2>&1 || echo "  не x509"
-      done
-
-      echo "── 5. curl --cacert проверка ───────────────────────────"
-      curl -sS -I --cacert /tmp/ca-bundle.pem https://${NEXUS_HOST}/repository/npmjs/ 2>&1 | head -5
-      echo "curl rc: $?"
-      echo "─────────────────────────────────────────────────────────"
       set -e
   cache:
     key:
