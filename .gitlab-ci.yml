@@ -118,62 +118,37 @@ docker_build:
   stage: docker_build
   dependencies:
     - npm_build
-  variables:
-    IMAGE_TAG: $REVISION-$CI_COMMIT_SHORT_SHA
   before_script:
     - export DOCKER_BUILDKIT=0
     - export COMPOSE_DOCKER_CLI_BUILD=0
-    - |
-      set +e
-      echo "── docker access diagnostic ──"
-      echo "DOCKER_HOST=${DOCKER_HOST:-(unset, defaults to unix:///var/run/docker.sock)}"
-      ls -la /var/run/docker.sock 2>&1 || echo "  /var/run/docker.sock — нет"
-      echo "── docker version ──"
-      docker version 2>&1 | head -20
-
-      echo "── registry creds ──"
-      echo "IMAGE_REGISTRY=${IMAGE_REGISTRY:-(empty)}"
-      if [ -n "$IMAGE_REGISTRY_USERNAME" ]; then
-        echo "IMAGE_REGISTRY_USERNAME = ${IMAGE_REGISTRY_USERNAME} (длина $(echo -n "$IMAGE_REGISTRY_USERNAME" | wc -c))"
-      else
-        echo "IMAGE_REGISTRY_USERNAME — НЕ ЗАДАН"
-      fi
-      if [ -n "$IMAGE_REGISTRY_PASSWORD" ]; then
-        PWD_LEN=$(echo -n "$IMAGE_REGISTRY_PASSWORD" | wc -c)
-        PWD_HEAD=$(echo -n "$IMAGE_REGISTRY_PASSWORD" | cut -c1-2)
-        PWD_TAIL=$(echo -n "$IMAGE_REGISTRY_PASSWORD" | tail -c 2)
-        echo "IMAGE_REGISTRY_PASSWORD = ${PWD_HEAD}***${PWD_TAIL} (длина ${PWD_LEN})"
-      else
-        echo "IMAGE_REGISTRY_PASSWORD — НЕ ЗАДАН"
-      fi
-      echo "─────────────────────"
-      set -e
     - echo $IMAGE_REGISTRY_PASSWORD | docker login -u $IMAGE_REGISTRY_USERNAME --password-stdin $IMAGE_REGISTRY
   script:
+    - export REVISION="${REVISION:-1.0.0}"
     - export DATE="$(date +%Y%m%d%H%M)"
-    - docker build --build-arg NGINX_IMAGE="$NGINX_IMAGE" -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:$IMAGE_TAG-$DATE .
-    - docker push $IMAGE_NAME:$IMAGE_TAG
-    - docker push $IMAGE_NAME:$IMAGE_TAG-$DATE
-    - docker image rm $IMAGE_NAME:$IMAGE_TAG
-    - docker image rm $IMAGE_NAME:$IMAGE_TAG-$DATE
+    - export IMAGE_TAG="${REVISION}-${CI_COMMIT_SHORT_SHA}"
+    - echo "Building $IMAGE_NAME:$IMAGE_TAG (also $IMAGE_TAG-$DATE)"
+    - docker build --build-arg NGINX_IMAGE="$NGINX_IMAGE" -t "$IMAGE_NAME:$IMAGE_TAG" -t "$IMAGE_NAME:$IMAGE_TAG-$DATE" .
+    - docker push "$IMAGE_NAME:$IMAGE_TAG"
+    - docker push "$IMAGE_NAME:$IMAGE_TAG-$DATE"
+    - docker image rm "$IMAGE_NAME:$IMAGE_TAG" || true
+    - docker image rm "$IMAGE_NAME:$IMAGE_TAG-$DATE" || true
   rules:
     - if: $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_BRANCH =~ /^feature\/.*/
 
 docker_tag:
   extends: .docker_runner
   stage: docker_tag
-  variables:
-    IMAGE_TAG: $CI_COMMIT_TAG-$CI_COMMIT_SHORT_SHA
   before_script:
     - export DOCKER_BUILDKIT=0
     - export COMPOSE_DOCKER_CLI_BUILD=0
     - echo $IMAGE_REGISTRY_PASSWORD | docker login -u $IMAGE_REGISTRY_USERNAME --password-stdin $IMAGE_REGISTRY
   script:
-    - docker pull $IMAGE_NAME:$IMAGE_TAG
-    - docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:$CI_COMMIT_TAG
-    - docker push $IMAGE_NAME:$CI_COMMIT_TAG
-    - docker image rm $IMAGE_NAME:$CI_COMMIT_TAG
-    - docker image rm $IMAGE_NAME:$IMAGE_TAG
+    - export IMAGE_TAG="${CI_COMMIT_TAG}-${CI_COMMIT_SHORT_SHA}"
+    - docker pull "$IMAGE_NAME:$IMAGE_TAG"
+    - docker tag  "$IMAGE_NAME:$IMAGE_TAG" "$IMAGE_NAME:$CI_COMMIT_TAG"
+    - docker push "$IMAGE_NAME:$CI_COMMIT_TAG"
+    - docker image rm "$IMAGE_NAME:$CI_COMMIT_TAG" || true
+    - docker image rm "$IMAGE_NAME:$IMAGE_TAG" || true
   rules:
     - if: $CI_COMMIT_TAG
 
@@ -181,9 +156,10 @@ helm_deploy:
   extends: .docker_runner
   stage: helm_deploy
   variables:
-    IMAGE_TAG: $REVISION-$CI_COMMIT_SHORT_SHA
     ENV: test
   script:
+    - export REVISION="${REVISION:-1.0.0}"
+    - export IMAGE_TAG="${REVISION}-${CI_COMMIT_SHORT_SHA}"
     - K8S_CONFIG=K8S_CONFIG_${ENV}
     - chmod 0400 $(echo "${!K8S_CONFIG}")
     - export KUBECONFIG=$(echo "${!K8S_CONFIG}")
