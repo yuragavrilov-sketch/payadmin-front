@@ -33,6 +33,19 @@ variables:
         echo "$CERT" > /tmp/ca-cert.pem
         export NODE_EXTRA_CA_CERTS=/tmp/ca-cert.pem
         npm config set cafile /tmp/ca-cert.pem
+        echo "── CA setup ────────────────────────────────────────────"
+        echo "NODE_EXTRA_CA_CERTS=$NODE_EXTRA_CA_CERTS"
+        echo "npm cafile = $(npm config get cafile)"
+        echo "npm registry = $(npm config get registry)"
+        echo "cert size: $(wc -c < /tmp/ca-cert.pem) bytes, lines: $(wc -l < /tmp/ca-cert.pem)"
+        echo "first/last line:"
+        head -1 /tmp/ca-cert.pem
+        tail -1 /tmp/ca-cert.pem
+        echo "subject (если есть openssl):"
+        command -v openssl >/dev/null && openssl x509 -in /tmp/ca-cert.pem -noout -subject -issuer -dates || echo "  openssl не установлен"
+        echo "────────────────────────────────────────────────────────"
+      else
+        echo "WARNING: \$CERT не задан — npm пойдёт без корп. CA, ожидайте SELF_SIGNED_CERT_IN_CHAIN"
       fi
   cache:
     key:
