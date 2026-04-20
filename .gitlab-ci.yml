@@ -28,22 +28,36 @@ variables:
   extends: .runner_template
   image: $NODE_IMAGE
   before_script:
+    - apk add --no-cache openssl ca-certificates >/dev/null
     - |
       if [ -n "$CERT" ]; then
         echo "$CERT" > /tmp/ca-cert.pem
         export NODE_EXTRA_CA_CERTS=/tmp/ca-cert.pem
         npm config set cafile /tmp/ca-cert.pem
-        echo "── CA setup ────────────────────────────────────────────"
+
+        # Доустановим CA в системный store (на всякий случай — некоторые
+        # инструменты не смотрят в NODE_EXTRA_CA_CERTS).
+        cp /tmp/ca-cert.pem /usr/local/share/ca-certificates/corp-ca.crt
+        update-ca-certificates 2>/dev/null || true
+
+        echo "── 1. Что в нашем \$CERT ─────────────────────────────────"
         echo "NODE_EXTRA_CA_CERTS=$NODE_EXTRA_CA_CERTS"
         echo "npm cafile = $(npm config get cafile)"
         echo "npm registry = $(npm config get registry)"
         echo "cert size: $(wc -c < /tmp/ca-cert.pem) bytes, lines: $(wc -l < /tmp/ca-cert.pem)"
-        echo "first/last line:"
-        head -1 /tmp/ca-cert.pem
-        tail -1 /tmp/ca-cert.pem
-        echo "subject (если есть openssl):"
-        command -v openssl >/dev/null && openssl x509 -in /tmp/ca-cert.pem -noout -subject -issuer -dates || echo "  openssl не установлен"
-        echo "────────────────────────────────────────────────────────"
+        grep -E '^-----' /tmp/ca-cert.pem
+        echo "Сертификатов в файле: $(grep -c '^-----BEGIN CERTIFICATE-----' /tmp/ca-cert.pem)"
+        openssl x509 -in /tmp/ca-cert.pem -noout -subject -issuer -dates -fingerprint 2>&1 || echo "  не удалось разобрать как X509"
+
+        echo "── 2. Что реально отдаёт Nexus ──────────────────────────"
+        echo | openssl s_client -connect nexus.online.tkbbank.ru:443 \
+          -servername nexus.online.tkbbank.ru -showcerts 2>/dev/null \
+          | awk '/-----BEGIN CERT/{flag=1} flag; /-----END CERT/{flag=0; print "---"}' \
+          | awk -v RS="---\n" 'NF{print "── cert in chain ──"; print | "openssl x509 -noout -subject -issuer -dates -fingerprint 2>&1"; close("openssl x509 -noout -subject -issuer -dates -fingerprint 2>&1")}'
+
+        echo "── 3. Прямой curl с нашим CA ────────────────────────────"
+        curl -sSI --cacert /tmp/ca-cert.pem https://nexus.online.tkbbank.ru/repository/npmjs/ 2>&1 | head -5 || echo "  curl упал — CA не подходит"
+        echo "─────────────────────────────────────────────────────────"
       else
         echo "WARNING: \$CERT не задан — npm пойдёт без корп. CA, ожидайте SELF_SIGNED_CERT_IN_CHAIN"
       fi
