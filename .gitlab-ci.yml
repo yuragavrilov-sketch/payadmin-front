@@ -79,23 +79,33 @@ npm_install:
     - node --version
     - npm --version
     - sed -i 's|https://registry.npmjs.org/|https://nexus.online.tkbbank.ru/repository/npmjs/|g' package-lock.json
-    - npm ci --no-audit --no-fund --loglevel=verbose
+    - npm ci --no-audit --no-fund
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1h
 
 npm_lint:
   extends: .npm_runner
   stage: npm_test
+  dependencies:
+    - npm_install
   script:
     - npm run lint
 
 npm_typecheck:
   extends: .npm_runner
   stage: npm_test
+  dependencies:
+    - npm_install
   script:
     - npm run typecheck
 
 npm_build:
   extends: .npm_runner
   stage: npm_build
+  dependencies:
+    - npm_install
   script:
     - test -f .env
     - npm run build
