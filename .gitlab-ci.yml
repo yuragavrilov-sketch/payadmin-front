@@ -19,20 +19,20 @@ variables:
   REVISION: "1.0.0"
 
 # ── Базовые шаблоны ────────────────────────────────────────────────────────
-.runner:template:
+.runner_template:
   tags:
     - tkbpay
     - docker
 
-# Node-runner: ставит CA-сертификат, кеширует node_modules между стадиями.
 .npm_runner:
-  extends: .runner:template
+  extends: .runner_template
   image: $NODE_IMAGE
   before_script:
-    - if [ -n "$CERT" ]; then
-        echo "$CERT" > /tmp/ca-cert.pem;
-        export NODE_EXTRA_CA_CERTS=/tmp/ca-cert.pem;
-        npm config set cafile /tmp/ca-cert.pem;
+    - |
+      if [ -n "$CERT" ]; then
+        echo "$CERT" > /tmp/ca-cert.pem
+        export NODE_EXTRA_CA_CERTS=/tmp/ca-cert.pem
+        npm config set cafile /tmp/ca-cert.pem
       fi
   cache:
     key:
@@ -42,9 +42,8 @@ variables:
       - node_modules/
     policy: pull
 
-# Docker-runner: для сборки/пуша образов через DinD.
 .docker_runner:
-  extends: .runner:template
+  extends: .runner_template
   image: $IMAGE_REGISTRY/library/docker:25.0.3
   services:
     - name: $IMAGE_REGISTRY/library/docker:25.0.3-dind
@@ -69,15 +68,8 @@ npm_install:
   script:
     - node --version
     - npm --version
-    # Lockfile генерится локально с registry.npmjs.org — переписываем resolved-URL'ы
-    # на внутренний Nexus, иначе CI не достучится наружу.
     - sed -i 's|https://registry.npmjs.org/|https://nexus.online.tkbbank.ru/repository/npmjs/|g' package-lock.json
     - npm ci --no-audit --no-fund --loglevel=verbose
-  artifacts:
-    when: on_failure
-    paths:
-      - npm-debug.log
-    expire_in: 1 day
 
 npm_lint:
   extends: .npm_runner
@@ -117,11 +109,7 @@ docker_build:
     - echo $IMAGE_REGISTRY_PASSWORD | docker login -u $IMAGE_REGISTRY_USERNAME --password-stdin $IMAGE_REGISTRY
   script:
     - export DATE="$(date +%Y%m%d%H%M)"
-    - docker build
-        --build-arg NGINX_IMAGE="$NGINX_IMAGE"
-        -t $IMAGE_NAME:$IMAGE_TAG
-        -t $IMAGE_NAME:$IMAGE_TAG-$DATE
-        .
+    - docker build --build-arg NGINX_IMAGE="$NGINX_IMAGE" -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:$IMAGE_TAG-$DATE .
     - docker push $IMAGE_NAME:$IMAGE_TAG
     - docker push $IMAGE_NAME:$IMAGE_TAG-$DATE
     - docker image rm $IMAGE_NAME:$IMAGE_TAG
@@ -140,7 +128,7 @@ docker_tag:
     - echo $IMAGE_REGISTRY_PASSWORD | docker login -u $IMAGE_REGISTRY_USERNAME --password-stdin $IMAGE_REGISTRY
   script:
     - docker pull $IMAGE_NAME:$IMAGE_TAG
-    - docker tag  $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:$CI_COMMIT_TAG
+    - docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:$CI_COMMIT_TAG
     - docker push $IMAGE_NAME:$CI_COMMIT_TAG
     - docker image rm $IMAGE_NAME:$CI_COMMIT_TAG
     - docker image rm $IMAGE_NAME:$IMAGE_TAG
@@ -158,13 +146,7 @@ helm_deploy:
     - chmod 0400 $(echo "${!K8S_CONFIG}")
     - export KUBECONFIG=$(echo "${!K8S_CONFIG}")
     - helm repo add kubernetes --insecure-skip-tls-verify=true $CHART_REPO
-    - helm upgrade $CI_PROJECT_NAME --install
-        --insecure-skip-tls-verify=true
-        --version=$CHART_VERSION
-        $CHART_NAME
-        --set image.tag=$IMAGE_TAG
-        -f helm/values-$ENV.yaml
-        --namespace=$NAMESPACE
+    - helm upgrade $CI_PROJECT_NAME --install --insecure-skip-tls-verify=true --version=$CHART_VERSION $CHART_NAME --set image.tag=$IMAGE_TAG -f helm/values-$ENV.yaml --namespace=$NAMESPACE
   when: manual
   allow_failure: false
   rules:
