@@ -126,6 +126,25 @@ docker_build:
   before_script:
     - export DOCKER_BUILDKIT=0
     - export COMPOSE_DOCKER_CLI_BUILD=0
+    - |
+      set +e
+      echo "── DinD diagnostic ──"
+      echo "hostname: $(hostname)"
+      echo "DOCKER_HOST=$DOCKER_HOST"
+      echo "── /etc/hosts ──"
+      cat /etc/hosts
+      echo "── /etc/resolv.conf ──"
+      cat /etc/resolv.conf
+      echo "── resolve 'docker' ──"
+      getent hosts docker || echo "  (not resolvable)"
+      echo "── resolve 'localhost' ──"
+      getent hosts localhost
+      echo "── docker version (через DOCKER_HOST=$DOCKER_HOST) ──"
+      docker version 2>&1 | head -20 || true
+      echo "── docker version (через tcp://localhost:2375) ──"
+      DOCKER_HOST=tcp://localhost:2375 docker version 2>&1 | head -20 || true
+      echo "─────────────────────"
+      set -e
     - echo $IMAGE_REGISTRY_PASSWORD | docker login -u $IMAGE_REGISTRY_USERNAME --password-stdin $IMAGE_REGISTRY
   script:
     - export DATE="$(date +%Y%m%d%H%M)"
