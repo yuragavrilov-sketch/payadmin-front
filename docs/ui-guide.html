@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Платёж — UI Guide v1.0</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --rust: #fd6141;
+    --rust-hover: #c75138;
+    --rust-soft-light: #fff0ec;
+    --rust-soft-dark: rgba(253,97,65,.14);
+    --ink: #141210;
+    --ink-dark: #0a0806;
+    --paper: #f4f1ec;
+    --body-dark: #0f0d0a;
+    --container-light: #ffffff;
+    --container-dark: #17150f;
+    --elevated-dark: #1d1a13;
+    --border-light: #d9d2c3;
+    --border-dark: #2d2921;
+    --border-sec-light: #ebe5d6;
+    --border-sec-dark: #201d16;
+    --text-light: #1a1814;
+    --text-dark: #ebe7db;
+    --text-sec-light: rgba(26,24,20,.68);
+    --text-sec-dark: rgba(235,231,219,.68);
+    --text-ter-light: rgba(26,24,20,.48);
+    --text-ter-dark: rgba(235,231,219,.48);
+    --text-quat-light: rgba(26,24,20,.28);
+    --text-quat-dark: rgba(235,231,219,.28);
+    --info-light: #1f6b94;
+    --info-dark: #4a9ac5;
+    --success-light: #2f8f4a;
+    --success-dark: #4fa968;
+    --warning-light: #c08400;
+    --warning-dark: #e0a339;
+    --error-light: #c8381e;
+    --error-dark: #e5624b;
+    --table-header-light: #faf7f0;
+    --table-header-dark: #1e1b14;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    color: var(--text-light);
+    background: var(--paper);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'tnum';
+  }
+
+  /* ---- Layout ---- */
+  .guide { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .guide-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 32px 0 24px;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 40px;
+  }
+  .guide-header h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -.02em; }
+  .guide-header .version {
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    color: var(--text-ter-light); letter-spacing: .06em; text-transform: uppercase;
+  }
+
+  .toc {
+    background: var(--container-light);
+    border: 1px solid var(--border-sec-light);
+    border-radius: 6px;
+    padding: 20px 24px;
+    margin-bottom: 48px;
+  }
+  .toc h3 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-ter-light); font-weight: 600; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc li { margin: 4px 0; }
+  .toc a { color: var(--rust); text-decoration: none; font-size: 13px; font-weight: 500; }
+  .toc a:hover { text-decoration: underline; }
+
+  section { margin-bottom: 56px; }
+  section > h2 {
+    font-size: 20px; font-weight: 600; margin: 0 0 8px;
+    padding-bottom: 8px; border-bottom: 2px solid var(--rust);
+    display: inline-block;
+  }
+  section > .section-desc { color: var(--text-sec-light); font-size: 13px; margin-bottom: 24px; }
+  h3 { font-size: 15px; font-weight: 600; margin: 24px 0 12px; }
+
+  /* ---- Swatches ---- */
+  .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+  .swatch {
+    border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--border-sec-light);
+  }
+  .swatch-color { height: 64px; position: relative; }
+  .swatch-color .contrast {
+    position: absolute; bottom: 4px; right: 6px;
+    font-size: 10px; font-family: 'JetBrains Mono', monospace;
+    padding: 1px 5px; border-radius: 2px;
+  }
+  .swatch-info { padding: 8px 10px; background: var(--container-light); }
+  .swatch-info .name { font-size: 12px; font-weight: 600; }
+  .swatch-info .hex { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-sec-light); }
+  .swatch-info .role { font-size: 11px; color: var(--text-ter-light); margin-top: 2px; }
+
+  /* ---- Token table ---- */
+  .token-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 16px 0; }
+  .token-table th {
+    text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--text-ter-light); padding: 8px 12px; border-bottom: 2px solid var(--border-light);
+    font-weight: 600;
+  }
+  .token-table td {
+    padding: 8px 12px; border-bottom: 1px solid var(--border-sec-light);
+    vertical-align: top;
+  }
+  .token-table .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .token-table .dot {
+    display: inline-block; width: 14px; height: 14px; border-radius: 3px;
+    vertical-align: middle; margin-right: 6px; border: 1px solid rgba(0,0,0,.08);
+  }
+
+  /* ---- Type specimens ---- */
+  .type-specimen { margin: 12px 0; padding: 20px 24px; background: var(--container-light); border-radius: 6px; border: 1px solid var(--border-sec-light); }
+  .type-label { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--text-ter-light); margin-bottom: 6px; font-weight: 600; }
+
+  /* ---- Component cards ---- */
+  .comp-card {
+    background: var(--container-light);
+    border: 1px solid var(--border-sec-light);
+    border-radius: 6px;
+    padding: 24px;
+    margin: 12px 0;
+  }
+  .comp-card-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+
+  /* ---- Side-by-side themes ---- */
+  .theme-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .theme-card { border-radius: 6px; padding: 24px; }
+  .theme-card.light { background: var(--container-light); border: 1px solid var(--border-light); color: var(--text-light); }
+  .theme-card.dark { background: var(--container-dark); border: 1px solid var(--border-dark); color: var(--text-dark); }
+
+  /* ---- Logo grid ---- */
+  .logo-grid { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; margin: 16px 0; }
+  .logo-cell {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; padding: 24px; min-width: 120px;
+  }
+  .logo-cell.on-paper { background: var(--paper); border: 1px solid var(--border-light); }
+  .logo-cell.on-ink { background: var(--ink); }
+  .logo-cell.on-white { background: #fff; border: 1px solid var(--border-sec-light); }
+  .logo-cell.on-dark { background: var(--body-dark); }
+
+  /* ---- Spacing ---- */
+  .spacing-row { display: flex; align-items: center; gap: 12px; margin: 6px 0; }
+  .spacing-bar { background: var(--rust); opacity: .4; height: 14px; border-radius: 2px; }
+  .spacing-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-sec-light); min-width: 50px; }
+  .spacing-use { font-size: 12px; color: var(--text-ter-light); }
+
+  /* ---- Do / Don't ---- */
+  .do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  .do-card, .dont-card { border-radius: 6px; padding: 16px 20px; font-size: 13px; }
+  .do-card { background: rgba(47,143,74,.08); border-left: 3px solid var(--success-light); }
+  .dont-card { background: rgba(200,56,30,.06); border-left: 3px solid var(--error-light); }
+  .do-card strong, .dont-card strong { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; display: block; margin-bottom: 6px; }
+  .do-card strong { color: var(--success-light); }
+  .dont-card strong { color: var(--error-light); }
+
+  /* ---- Misc ---- */
+  .note {
+    background: rgba(31,107,148,.06);
+    border-left: 3px solid var(--info-light);
+    padding: 12px 16px;
+    border-radius: 0 4px 4px 0;
+    font-size: 13px;
+    margin: 16px 0;
+    color: var(--text-sec-light);
+  }
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: rgba(26,24,20,.05);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .tag-sample {
+    display: inline-block; padding: 1px 8px; border-radius: 4px;
+    font-size: 12px; font-weight: 500; margin: 2px 4px 2px 0;
+  }
+
+  /* Print */
+  @media print {
+    body { background: #fff; font-size: 11px; }
+    .guide { max-width: 100%; padding: 0; }
+    section { page-break-inside: avoid; }
+    .theme-pair { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="guide">
+
+<!-- ============================================================ -->
+<!-- HEADER                                                        -->
+<!-- ============================================================ -->
+<div class="guide-header">
+  <svg width="40" height="40" viewBox="0 0 24 24" role="img" aria-label="Platezh">
+    <rect width="24" height="24" rx="4" fill="#141210"/>
+    <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+    <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+    <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+  </svg>
+  <div>
+    <h1>Платёж <span style="color:var(--text-ter-light); font-weight:400">UI Guide</span></h1>
+    <div class="version">v1.0 &middot; April 2026 &middot; Ant Design 5 + Brand Tokens</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TOC                                                           -->
+<!-- ============================================================ -->
+<div class="toc">
+  <h3>Содержание</h3>
+  <ol>
+    <li><a href="#identity">Идентичность и логотип</a></li>
+    <li><a href="#color">Цветовая система</a></li>
+    <li><a href="#typography">Типографика</a></li>
+    <li><a href="#tokens">Дизайн-токены (полная карта)</a></li>
+    <li><a href="#themes">Тёмная и светлая тема</a></li>
+    <li><a href="#layout">Лейаут и навигация</a></li>
+    <li><a href="#components">Компоненты и паттерны</a></li>
+    <li><a href="#spacing">Сетка и отступы</a></li>
+    <li><a href="#data">Отображение данных</a></li>
+    <li><a href="#motion">Анимация</a></li>
+    <li><a href="#rules">Do / Don't</a></li>
+  </ol>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- 1. IDENTITY                                                   -->
+<!-- ============================================================ -->
+<section id="identity">
+  <h2>1. Идентичность и логотип</h2>
+  <p class="section-desc">Знак Платёж — кириллическая П, стилизованная как «платёжные ворота» (gate). Две стойки + перекладина.</p>
+
+  <h3>Конструкция</h3>
+  <div class="comp-card">
+    <div style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap">
+      <div style="text-align:center">
+        <svg width="120" height="120" viewBox="0 0 24 24">
+          <rect width="24" height="24" rx="4" fill="#141210"/>
+          <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+          <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+          <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+        </svg>
+        <div style="font-size:11px; color:var(--text-ter-light); margin-top:6px">Default (ink tile)</div>
+      </div>
+      <div style="text-align:center">
+        <svg width="120" height="120" viewBox="0 0 24 24">
+          <rect width="24" height="24" rx="4" fill="#f4f1ec" stroke="#d9d2c3"/>
+          <rect x="4" y="5" width="3" height="14" rx=".7" fill="#141210"/>
+          <rect x="17" y="5" width="3" height="14" rx=".7" fill="#141210"/>
+          <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+        </svg>
+        <div style="font-size:11px; color:var(--text-ter-light); margin-top:6px">Inverted (paper tile)</div>
+      </div>
+      <div style="flex:1; min-width: 200px; font-size:13px;">
+        <p style="margin:0 0 8px"><strong>ViewBox:</strong> 24 &times; 24</p>
+        <p style="margin:0 0 8px"><strong>Tile:</strong> <code>rx="4"</code> (= borderRadius)</p>
+        <p style="margin:0 0 8px"><strong>Posts:</strong> 3 &times; 14, x=4 / x=17, <code>rx=".7"</code></p>
+        <p style="margin:0 0 8px"><strong>Crossbar:</strong> 16 &times; 2.6, y=4.5, fill <code>#fd6141</code> (rust)</p>
+        <p style="margin:0"><strong>Clear space:</strong> &ge; 3 units (1&times; post width)</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Контексты использования</h3>
+  <div class="logo-grid">
+    <div class="logo-cell on-paper">
+      <svg width="44" height="44" viewBox="0 0 24 24">
+        <rect width="24" height="24" rx="4" fill="#141210"/>
+        <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+        <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+        <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+      </svg>
+      <span style="margin-left:10px; font-weight:600; font-size:16px">Платёж</span>
+    </div>
+    <div class="logo-cell on-ink" style="gap:10px">
+      <svg width="22" height="22" viewBox="0 0 24 24">
+        <rect width="24" height="24" rx="4" fill="#141210"/>
+        <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+        <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+        <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+      </svg>
+      <span style="color:#fff; font-weight:600; font-size:14px">Платёж</span>
+      <span style="color:rgba(255,255,255,.4); font-size:9px; letter-spacing:.22em; text-transform:uppercase; font-weight:500">Админ</span>
+    </div>
+    <div class="logo-cell on-dark">
+      <svg width="16" height="16" viewBox="0 0 24 24">
+        <rect width="24" height="24" rx="4" fill="#141210"/>
+        <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+        <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+        <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+      </svg>
+    </div>
+    <div class="logo-cell on-white">
+      <svg width="32" height="32" viewBox="0 0 24 24">
+        <rect width="24" height="24" rx="4" fill="#f4f1ec" stroke="#d9d2c3"/>
+        <rect x="4" y="5" width="3" height="14" rx=".7" fill="#141210"/>
+        <rect x="17" y="5" width="3" height="14" rx=".7" fill="#141210"/>
+        <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="note">
+    Минимальный размер знака: <strong>16px</strong>. При 16px стойки = ~2px, что обеспечивает читаемость на ретина-экранах. Для favicon используется тот же SVG.
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 2. COLOR                                                      -->
+<!-- ============================================================ -->
+<section id="color">
+  <h2>2. Цветовая система</h2>
+  <p class="section-desc">Тёплая нейтральная палитра на основе warm paper / warm ink. Ни один оттенок не уходит в холодный серый.</p>
+
+  <h3>Основной акцент</h3>
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background:#fd6141">
+        <span class="contrast" style="color:#fff; background:rgba(0,0,0,.3)">AA on white</span>
+      </div>
+      <div class="swatch-info">
+        <div class="name">Rust (Primary)</div>
+        <div class="hex">#fd6141</div>
+        <div class="role">colorPrimary &middot; кнопки &middot; активный пункт menu &middot; перекладина П</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#c75138">
+        <span class="contrast" style="color:#fff; background:rgba(0,0,0,.3)">hover</span>
+      </div>
+      <div class="swatch-info">
+        <div class="name">Rust Hover</div>
+        <div class="hex">#c75138</div>
+        <div class="role">Hover state для primary кнопок и ссылок</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#fff0ec"></div>
+      <div class="swatch-info">
+        <div class="name">Rust Soft (Light)</div>
+        <div class="hex">#fff0ec</div>
+        <div class="role">Row hover / selection (light mode)</div>
+      </div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:rgba(253,97,65,.14); border:1px solid var(--border-sec-light)"></div>
+      <div class="swatch-info">
+        <div class="name">Rust Soft (Dark)</div>
+        <div class="hex">rgba(253,97,65,.14)</div>
+        <div class="role">Row hover / selection (dark mode)</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Семантические цвета</h3>
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background:#1f6b94"></div>
+      <div class="swatch-info"><div class="name">Info (Light)</div><div class="hex">#1f6b94</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#2f8f4a"></div>
+      <div class="swatch-info"><div class="name">Success (Light)</div><div class="hex">#2f8f4a</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#c08400"></div>
+      <div class="swatch-info"><div class="name">Warning (Light)</div><div class="hex">#c08400</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#c8381e"></div>
+      <div class="swatch-info"><div class="name">Error (Light)</div><div class="hex">#c8381e</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#4a9ac5"></div>
+      <div class="swatch-info"><div class="name">Info (Dark)</div><div class="hex">#4a9ac5</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#4fa968"></div>
+      <div class="swatch-info"><div class="name">Success (Dark)</div><div class="hex">#4fa968</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#e0a339"></div>
+      <div class="swatch-info"><div class="name">Warning (Dark)</div><div class="hex">#e0a339</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#e5624b"></div>
+      <div class="swatch-info"><div class="name">Error (Dark)</div><div class="hex">#e5624b</div></div>
+    </div>
+  </div>
+
+  <h3>Поверхности (Light)</h3>
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background:#f4f1ec; border-bottom:1px solid var(--border-light)"></div>
+      <div class="swatch-info"><div class="name">Paper</div><div class="hex">#f4f1ec</div><div class="role">colorBgLayout &middot; фон страницы</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#ffffff; border-bottom:1px solid var(--border-sec-light)"></div>
+      <div class="swatch-info"><div class="name">Container</div><div class="hex">#ffffff</div><div class="role">colorBgContainer &middot; карточки, drawers</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#faf7f0; border-bottom:1px solid var(--border-sec-light)"></div>
+      <div class="swatch-info"><div class="name">Table Header</div><div class="hex">#faf7f0</div><div class="role">headerBg в таблицах</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#141210"></div>
+      <div class="swatch-info"><div class="name">Sider Ink</div><div class="hex">#141210</div><div class="role">Фон сайдбара (всегда тёмный)</div></div>
+    </div>
+  </div>
+
+  <h3>Поверхности (Dark)</h3>
+  <div class="swatch-grid">
+    <div class="swatch">
+      <div class="swatch-color" style="background:#0f0d0a"></div>
+      <div class="swatch-info"><div class="name">Body Dark</div><div class="hex">#0f0d0a</div><div class="role">colorBgLayout (dark)</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#17150f"></div>
+      <div class="swatch-info"><div class="name">Container Dark</div><div class="hex">#17150f</div><div class="role">colorBgContainer (dark)</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#1d1a13"></div>
+      <div class="swatch-info"><div class="name">Elevated Dark</div><div class="hex">#1d1a13</div><div class="role">colorBgElevated (dark)</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-color" style="background:#0a0806"></div>
+      <div class="swatch-info"><div class="name">Sider Ink Dark</div><div class="hex">#0a0806</div><div class="role">Фон сайдбара (dark mode)</div></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 3. TYPOGRAPHY                                                 -->
+<!-- ============================================================ -->
+<section id="typography">
+  <h2>3. Типографика</h2>
+  <p class="section-desc">Два шрифта. IBM Plex Sans для всего UI. JetBrains Mono для машинных значений.</p>
+
+  <h3>IBM Plex Sans <span style="font-weight:400; color:var(--text-ter-light)">— основной</span></h3>
+  <div class="type-specimen">
+    <div class="type-label">Regular 400</div>
+    <div style="font-size:13px; font-weight:400; margin-bottom:16px">
+      Платёжный шлюз обработал 128 413 транзакций за последние 24 часа. Общий объём составил 42.81M рублей при success rate 97.4%.
+    </div>
+    <div class="type-label">Medium 500</div>
+    <div style="font-size:13px; font-weight:500; margin-bottom:16px">
+      DNS Shop &middot; Electronics &middot; VISA &middot;&middot;&middot;&middot; 4242 &middot; ₽124 800,00
+    </div>
+    <div class="type-label">SemiBold 600</div>
+    <div style="font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; margin-bottom:16px">
+      ₽42.81<span style="font-size:13px; font-weight:400; color:var(--text-sec-light); margin-left:3px">M</span>
+    </div>
+    <div class="type-label">Section Title (H4, 16px, 600)</div>
+    <div style="font-size:16px; font-weight:600; margin-bottom:8px">
+      Транзакции <span class="tag-sample" style="background:rgba(31,107,148,.1); color:var(--info-light)">Live</span>
+    </div>
+  </div>
+
+  <h3>JetBrains Mono <span style="font-weight:400; color:var(--text-ter-light)">— моноширинный</span></h3>
+  <div class="type-specimen">
+    <div class="type-label">IDs, RRNs, timestamps</div>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-sec-light); margin-bottom:12px">
+      txn_01HXQ8ZHT14K &middot; RRN 442901773 &middot; 2026-04-16 14:22:01
+    </div>
+    <div class="type-label">Суммы в таблицах</div>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:12px; margin-bottom:12px">
+      342 100,00 &middot; 18 740,00 &middot; 3 290,50
+    </div>
+    <div class="type-label">Латентность, метрики, JSON</div>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-sec-light)">
+      latency: 842ms &middot; risk_score: 14 &middot; p95: 1.2s
+    </div>
+  </div>
+
+  <h3>Правила применения</h3>
+  <table class="token-table">
+    <thead>
+      <tr><th>Контекст</th><th>Шрифт</th><th>Size</th><th>Weight</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Body text, labels, nav</td><td>IBM Plex Sans</td><td class="mono">13px</td><td class="mono">400</td></tr>
+      <tr><td>Merchant name in table</td><td>IBM Plex Sans</td><td class="mono">13px</td><td class="mono">500</td></tr>
+      <tr><td>KPI value</td><td>IBM Plex Sans</td><td class="mono">22px</td><td class="mono">600</td></tr>
+      <tr><td>Page title (H4)</td><td>IBM Plex Sans</td><td class="mono">16px</td><td class="mono">600</td></tr>
+      <tr><td>Drawer amount</td><td>IBM Plex Sans</td><td class="mono">26px</td><td class="mono">600</td></tr>
+      <tr><td>Sub-labels, category</td><td>IBM Plex Sans</td><td class="mono">11–12px</td><td class="mono">400</td></tr>
+      <tr><td>Menu group title</td><td>IBM Plex Sans</td><td class="mono">10px</td><td class="mono">600</td></tr>
+      <tr><td>Txn ID, RRN, PAN</td><td>JetBrains Mono</td><td class="mono">12px</td><td class="mono">400</td></tr>
+      <tr><td>Badge in sidebar</td><td>JetBrains Mono</td><td class="mono">10px</td><td class="mono">400</td></tr>
+      <tr><td>JSON/code blocks</td><td>JetBrains Mono</td><td class="mono">11.5px</td><td class="mono">400</td></tr>
+      <tr><td>Keyboard shortcut <kbd style="font-family:'JetBrains Mono',monospace; font-size:11px; padding:0 5px; border:1px solid var(--border-light); border-radius:2px">⌘K</kbd></td><td>JetBrains Mono</td><td class="mono">11px</td><td class="mono">400</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>font-feature-settings: 'tnum'</strong> включено глобально. Все числа табулярной ширины — колонки цифр ровные без дополнительных стилей.
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 4. TOKENS                                                     -->
+<!-- ============================================================ -->
+<section id="tokens">
+  <h2>4. Дизайн-токены</h2>
+  <p class="section-desc">Полная карта токенов, прокинутых через <code>ConfigProvider.theme</code>. Файл: <code>src/theme.ts</code>.</p>
+
+  <h3>Global tokens</h3>
+  <table class="token-table">
+    <thead><tr><th>Token</th><th>Light</th><th>Dark</th><th>Назначение</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="mono">colorPrimary</td>
+        <td><span class="dot" style="background:#fd6141"></span><span class="mono">#fd6141</span></td>
+        <td><span class="dot" style="background:#fd6141"></span><span class="mono">#fd6141</span></td>
+        <td>Единый во всех темах</td>
+      </tr>
+      <tr>
+        <td class="mono">colorInfo</td>
+        <td><span class="dot" style="background:#1f6b94"></span><span class="mono">#1f6b94</span></td>
+        <td><span class="dot" style="background:#4a9ac5"></span><span class="mono">#4a9ac5</span></td>
+        <td>Информационные теги, бейджи</td>
+      </tr>
+      <tr>
+        <td class="mono">colorSuccess</td>
+        <td><span class="dot" style="background:#2f8f4a"></span><span class="mono">#2f8f4a</span></td>
+        <td><span class="dot" style="background:#4fa968"></span><span class="mono">#4fa968</span></td>
+        <td>Captured, Won, позитивные тренды</td>
+      </tr>
+      <tr>
+        <td class="mono">colorWarning</td>
+        <td><span class="dot" style="background:#c08400"></span><span class="mono">#c08400</span></td>
+        <td><span class="dot" style="background:#e0a339"></span><span class="mono">#e0a339</span></td>
+        <td>In review, response_due, средний risk</td>
+      </tr>
+      <tr>
+        <td class="mono">colorError</td>
+        <td><span class="dot" style="background:#c8381e"></span><span class="mono">#c8381e</span></td>
+        <td><span class="dot" style="background:#e5624b"></span><span class="mono">#e5624b</span></td>
+        <td>Declined, lost, высокий risk, urgent</td>
+      </tr>
+      <tr>
+        <td class="mono">colorBgLayout</td>
+        <td><span class="dot" style="background:#f4f1ec"></span><span class="mono">#f4f1ec</span></td>
+        <td><span class="dot" style="background:#0f0d0a"></span><span class="mono">#0f0d0a</span></td>
+        <td>Фон страницы (тёплый paper / warm-black)</td>
+      </tr>
+      <tr>
+        <td class="mono">colorBgContainer</td>
+        <td><span class="dot" style="background:#ffffff; border-color:#ccc"></span><span class="mono">#ffffff</span></td>
+        <td><span class="dot" style="background:#17150f"></span><span class="mono">#17150f</span></td>
+        <td>Карточки, drawer, основной контейнер</td>
+      </tr>
+      <tr>
+        <td class="mono">colorBgElevated</td>
+        <td><span class="dot" style="background:#ffffff; border-color:#ccc"></span><span class="mono">#ffffff</span></td>
+        <td><span class="dot" style="background:#1d1a13"></span><span class="mono">#1d1a13</span></td>
+        <td>Dropdown, popover, tooltip</td>
+      </tr>
+      <tr>
+        <td class="mono">colorBorder</td>
+        <td><span class="dot" style="background:#d9d2c3"></span><span class="mono">#d9d2c3</span></td>
+        <td><span class="dot" style="background:#2d2921"></span><span class="mono">#2d2921</span></td>
+        <td>Основная граница</td>
+      </tr>
+      <tr>
+        <td class="mono">colorBorderSecondary</td>
+        <td><span class="dot" style="background:#ebe5d6"></span><span class="mono">#ebe5d6</span></td>
+        <td><span class="dot" style="background:#201d16"></span><span class="mono">#201d16</span></td>
+        <td>Разделители, вторичные границы</td>
+      </tr>
+      <tr>
+        <td class="mono">colorText</td>
+        <td><span class="dot" style="background:#1a1814"></span><span class="mono">#1a1814</span></td>
+        <td><span class="dot" style="background:#ebe7db"></span><span class="mono">#ebe7db</span></td>
+        <td>Основной текст</td>
+      </tr>
+      <tr>
+        <td class="mono">colorTextSecondary</td>
+        <td class="mono" style="font-size:11px">rgba(26,24,20,.68)</td>
+        <td class="mono" style="font-size:11px">rgba(235,231,219,.68)</td>
+        <td>Подписи, вторичный текст</td>
+      </tr>
+      <tr>
+        <td class="mono">colorTextTertiary</td>
+        <td class="mono" style="font-size:11px">rgba(26,24,20,.48)</td>
+        <td class="mono" style="font-size:11px">rgba(235,231,219,.48)</td>
+        <td>Placeholder, hint</td>
+      </tr>
+      <tr>
+        <td class="mono">fontSize</td>
+        <td class="mono">13px</td>
+        <td class="mono">13px</td>
+        <td>Базовый размер</td>
+      </tr>
+      <tr>
+        <td class="mono">controlHeight</td>
+        <td class="mono">30px</td>
+        <td class="mono">30px</td>
+        <td>Высота контролов (input, button, select)</td>
+      </tr>
+      <tr>
+        <td class="mono">borderRadius</td>
+        <td class="mono">4px</td>
+        <td class="mono">4px</td>
+        <td>Основной радиус</td>
+      </tr>
+      <tr>
+        <td class="mono">borderRadiusLG</td>
+        <td class="mono">6px</td>
+        <td class="mono">6px</td>
+        <td>Карточки</td>
+      </tr>
+      <tr>
+        <td class="mono">borderRadiusSM</td>
+        <td class="mono">2px</td>
+        <td class="mono">2px</td>
+        <td>Теги, мелкие элементы</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Component tokens</h3>
+  <table class="token-table">
+    <thead><tr><th>Component.token</th><th>Light</th><th>Dark</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">Layout.siderBg</td><td class="mono">#141210</td><td class="mono">#0a0806</td></tr>
+      <tr><td class="mono">Layout.headerBg</td><td class="mono">#ffffff</td><td class="mono">#17150f</td></tr>
+      <tr><td class="mono">Layout.headerHeight</td><td class="mono" colspan="2">52px</td></tr>
+      <tr><td class="mono">Layout.headerPadding</td><td class="mono" colspan="2">0 20px</td></tr>
+      <tr><td class="mono">Menu.darkItemSelectedBg</td><td class="mono" colspan="2">#fd6141 (rust)</td></tr>
+      <tr><td class="mono">Menu.darkItemHoverBg</td><td class="mono" colspan="2">rgba(255,255,255,.05)</td></tr>
+      <tr><td class="mono">Menu.darkGroupTitleColor</td><td class="mono" colspan="2">rgba(255,255,255,.38)</td></tr>
+      <tr><td class="mono">Menu.itemHeight</td><td class="mono" colspan="2">36px</td></tr>
+      <tr><td class="mono">Table.headerBg</td><td class="mono">#faf7f0</td><td class="mono">#1e1b14</td></tr>
+      <tr><td class="mono">Table.rowHoverBg</td><td class="mono">#fff0ec</td><td class="mono">rgba(253,97,65,.14)</td></tr>
+      <tr><td class="mono">Table.cellPaddingBlock</td><td class="mono" colspan="2">9px</td></tr>
+      <tr><td class="mono">Table.cellPaddingInline</td><td class="mono" colspan="2">14px</td></tr>
+      <tr><td class="mono">Button.primaryShadow</td><td class="mono" colspan="2">0 1px 0 rgba(253,97,65,.12)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 5. THEMES                                                     -->
+<!-- ============================================================ -->
+<section id="themes">
+  <h2>5. Тёмная и светлая тема</h2>
+  <p class="section-desc">Обе темы обязательны. Переключение через Segmented в header'е. Сохраняется в <code>localStorage['platezh.theme']</code>.</p>
+
+  <div class="theme-pair">
+    <div class="theme-card light">
+      <div style="font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--text-ter-light); margin-bottom:12px; font-weight:600">Light Theme</div>
+      <div style="font-weight:600; font-size:16px; margin-bottom:12px">Транзакции</div>
+      <div style="display:flex; gap:8px; margin-bottom:12px">
+        <span class="tag-sample" style="background:rgba(47,143,74,.1); color:#2f8f4a">Captured</span>
+        <span class="tag-sample" style="background:rgba(200,56,30,.08); color:#c8381e">Declined</span>
+        <span class="tag-sample" style="background:rgba(192,132,0,.1); color:#c08400">In review</span>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-sec-light)">txn_01HXQ8ZHT14K</div>
+      <div style="font-weight:600; font-variant-numeric:tabular-nums; font-size:18px; margin-top:8px">₽ 18 740,00</div>
+      <div style="display:flex; gap:8px; margin-top:12px">
+        <div style="background:#fd6141; color:#fff; padding:3px 12px; border-radius:4px; font-size:13px; font-weight:500">Primary</div>
+        <div style="background:#fff; border:1px solid #d9d2c3; padding:3px 12px; border-radius:4px; font-size:13px">Default</div>
+      </div>
+      <div style="margin-top:16px; padding:10px 12px; background:#faf7f0; border-radius:4px; font-size:12px; color:var(--text-sec-light)">
+        Table header background
+      </div>
+    </div>
+
+    <div class="theme-card dark">
+      <div style="font-size:10px; text-transform:uppercase; letter-spacing:.12em; color:var(--text-ter-dark); margin-bottom:12px; font-weight:600">Dark Theme</div>
+      <div style="font-weight:600; font-size:16px; margin-bottom:12px; color:#ebe7db">Транзакции</div>
+      <div style="display:flex; gap:8px; margin-bottom:12px">
+        <span class="tag-sample" style="background:rgba(79,169,104,.15); color:#4fa968">Captured</span>
+        <span class="tag-sample" style="background:rgba(229,98,75,.12); color:#e5624b">Declined</span>
+        <span class="tag-sample" style="background:rgba(224,163,57,.12); color:#e0a339">In review</span>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-sec-dark)">txn_01HXQ8ZHT14K</div>
+      <div style="font-weight:600; font-variant-numeric:tabular-nums; font-size:18px; margin-top:8px; color:#ebe7db">₽ 18 740,00</div>
+      <div style="display:flex; gap:8px; margin-top:12px">
+        <div style="background:#fd6141; color:#fff; padding:3px 12px; border-radius:4px; font-size:13px; font-weight:500">Primary</div>
+        <div style="background:#1d1a13; border:1px solid #2d2921; padding:3px 12px; border-radius:4px; font-size:13px; color:#ebe7db">Default</div>
+      </div>
+      <div style="margin-top:16px; padding:10px 12px; background:#1e1b14; border-radius:4px; font-size:12px; color:var(--text-sec-dark)">
+        Table header background
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Anti-FOUC:</strong> Inline-скрипт в <code>index.html</code> ставит <code>data-theme</code> на <code>&lt;html&gt;</code> до первого рендера React. CSS реагирует через <code>html[data-theme='dark']</code>. Переход между темами — CSS <code>transition: background-color .2s ease, color .2s ease</code>.
+  </div>
+
+  <h3>Принцип: Sider всегда тёмный</h3>
+  <p>Сайдбар остаётся ink-чёрным в обеих темах. В light mode: <code>#141210</code>, в dark mode: <code>#0a0806</code> (ещё темнее, чтобы отделиться от body <code>#0f0d0a</code>). Это создаёт якорь — навигация всегда стабильна.</p>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 6. LAYOUT                                                     -->
+<!-- ============================================================ -->
+<section id="layout">
+  <h2>6. Лейаут и навигация</h2>
+  <p class="section-desc">Классический sidebar layout. Фиксированный Sider 216px + Header 52px + Content (scroll).</p>
+
+  <div class="comp-card">
+    <div style="display:flex; border:1px solid var(--border-light); border-radius:6px; overflow:hidden; height:320px">
+      <!-- Sider mock -->
+      <div style="width:216px; background:#141210; color:#fff; flex-shrink:0; font-size:12px; padding-top:0">
+        <div style="height:52px; display:flex; align-items:center; gap:10px; padding:0 18px; border-bottom:1px solid rgba(255,255,255,.08)">
+          <svg width="22" height="22" viewBox="0 0 24 24">
+            <rect width="24" height="24" rx="4" fill="#141210"/>
+            <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+            <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+            <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+          </svg>
+          <span style="font-weight:600; font-size:15px; letter-spacing:-.015em">Платёж</span>
+          <span style="margin-left:auto; font-size:9px; color:rgba(255,255,255,.4); letter-spacing:.22em; text-transform:uppercase; font-weight:500">Админ</span>
+        </div>
+        <div style="padding:8px 0">
+          <div style="font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.38); padding:12px 18px 6px; font-weight:600">Операции</div>
+          <div style="padding:6px 18px; color:rgba(255,255,255,.7)">Дашборд</div>
+          <div style="padding:6px 18px; background:#fd6141; border-radius:0; color:#fff; font-weight:500; display:flex; align-items:center">
+            Транзакции
+            <span style="margin-left:auto; font-size:10px; font-family:'JetBrains Mono',monospace; background:rgba(255,255,255,.12); padding:0 6px; border-radius:8px">128K</span>
+          </div>
+          <div style="padding:6px 18px; color:rgba(255,255,255,.7)">Возвраты</div>
+          <div style="padding:6px 18px; color:rgba(255,255,255,.7)">Диспуты</div>
+          <div style="font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:rgba(255,255,255,.38); padding:12px 18px 6px; font-weight:600">Леджер</div>
+          <div style="padding:6px 18px; color:rgba(255,255,255,.7)">Расчёты</div>
+          <div style="padding:6px 18px; color:rgba(255,255,255,.7)">Выплаты</div>
+        </div>
+      </div>
+      <!-- Main -->
+      <div style="flex:1; display:flex; flex-direction:column; background:#f4f1ec">
+        <!-- Header -->
+        <div style="height:52px; background:#fff; border-bottom:1px solid var(--border-sec-light); display:flex; align-items:center; padding:0 20px; gap:12px; flex-shrink:0">
+          <span style="font-size:13px; color:var(--text-sec-light)">Операции</span>
+          <span style="font-size:13px; color:var(--text-ter-light)">/</span>
+          <span style="font-size:13px">Транзакции</span>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:10px; font-size:11px">
+            <span style="background:rgba(47,143,74,.1); color:#2f8f4a; padding:2px 8px; border-radius:4px; font-weight:500; font-size:11px">● Production</span>
+            <span style="width:28px; height:28px; background:#fd6141; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600">ЮГ</span>
+          </div>
+        </div>
+        <!-- Content -->
+        <div style="flex:1; padding:16px; overflow:hidden">
+          <div style="background:#fff; border-radius:6px; border:1px solid var(--border-sec-light); padding:14px 18px; margin-bottom:12px">
+            <div style="font-size:12px; color:var(--text-ter-light)">Volume (24h)</div>
+            <div style="font-size:20px; font-weight:600; font-variant-numeric:tabular-nums; margin-top:2px">₽42.81<span style="font-size:13px; font-weight:400; color:var(--text-sec-light); margin-left:2px">M</span></div>
+          </div>
+          <div style="background:#fff; border-radius:6px; border:1px solid var(--border-sec-light); height:120px; display:flex; align-items:center; justify-content:center; color:var(--text-ter-light); font-size:13px">
+            Table content area
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Размеры</h3>
+  <table class="token-table">
+    <thead><tr><th>Элемент</th><th>Размер</th><th>Заметки</th></tr></thead>
+    <tbody>
+      <tr><td>Sider width</td><td class="mono">216px</td><td>Фиксирован, <code>borderRight: 1px solid #000</code></td></tr>
+      <tr><td>Header height</td><td class="mono">52px</td><td>Breadcrumb + Search + Controls</td></tr>
+      <tr><td>Content padding</td><td class="mono">16px</td><td>Вокруг всех карточек</td></tr>
+      <tr><td>Gap между карточками</td><td class="mono">12px</td><td>Flex vertical gap</td></tr>
+      <tr><td>Menu item height</td><td class="mono">36px</td><td>Компактная навигация</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Навигация — группы</h3>
+  <table class="token-table">
+    <thead><tr><th>Группа</th><th>Key</th><th>Экраны</th></tr></thead>
+    <tbody>
+      <tr><td style="font-weight:600">Операции</td><td class="mono">ops</td><td>Дашборд, Транзакции, Возвраты, Диспуты, Чарджбеки</td></tr>
+      <tr><td style="font-weight:600">Леджер</td><td class="mono">ledger</td><td>Расчёты, Выплаты, Сверка</td></tr>
+      <tr><td style="font-weight:600">Контроль</td><td class="mono">control</td><td>Мерчанты, Риск-правила, Webhooks, API-ключи, Настройки</td></tr>
+    </tbody>
+  </table>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 7. COMPONENTS                                                 -->
+<!-- ============================================================ -->
+<section id="components">
+  <h2>7. Компоненты и паттерны</h2>
+  <p class="section-desc">Базовая библиотека: Ant Design 5. Ниже — кастомные паттерны поверх стандарта.</p>
+
+  <h3>KPI-карточка</h3>
+  <div class="comp-card">
+    <div style="display:flex; gap:12px; flex-wrap:wrap">
+      <div style="flex:1; min-width:180px; background:#fff; border:1px solid var(--border-sec-light); border-radius:6px; padding:14px 18px; position:relative">
+        <div style="font-size:12px; color:var(--text-sec-light)">Volume (24h)</div>
+        <div style="font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; margin-top:2px">
+          <span style="font-size:13px; font-weight:400; color:var(--text-sec-light)">₽ </span>42.81<span style="font-size:12px; font-weight:400; color:var(--text-sec-light); margin-left:3px">M</span>
+        </div>
+        <div style="font-size:11px; margin-top:3px; color:#2f8f4a">
+          ↑ +8.2% vs вчера
+        </div>
+      </div>
+      <div style="flex:1; min-width:180px; background:#fff; border:1px solid var(--border-sec-light); border-radius:6px; padding:14px 18px">
+        <div style="font-size:12px; color:var(--text-sec-light)">Success rate</div>
+        <div style="font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; margin-top:2px; color:#fd6141">
+          97.4<span style="font-size:12px; font-weight:400; color:var(--text-sec-light); margin-left:3px">%</span>
+        </div>
+        <div style="font-size:11px; margin-top:3px; color:#c8381e">
+          ↓ -0.42 pp — investigate
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:var(--text-ter-light)">
+      <strong>Структура:</strong> Card (body padding 14px 18px) &rarr; Text type="secondary" &rarr; KPI value (22px/600, tabular-nums) &rarr; Trend (11px, цветовой код success/error)
+      <br>Sparkline (SVG, абсолютная позиция top-right, opacity .55)
+    </div>
+  </div>
+
+  <h3>Строка фильтров</h3>
+  <div class="comp-card">
+    <div style="background:#fff; border:1px solid var(--border-sec-light); border-radius:4px; padding:12px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:13px">
+      <div style="min-width:140px; padding:4px 11px; border:1px solid var(--border-light); border-radius:4px; font-size:13px; color:var(--text-light)">
+        <span style="color:var(--text-sec-light)">Период: </span>Сегодня
+      </div>
+      <div style="min-width:140px; padding:4px 11px; border:1px solid var(--border-light); border-radius:4px; font-size:13px; color:var(--text-light)">
+        <span style="color:var(--text-sec-light)">Статус: </span>Все
+      </div>
+      <div style="min-width:140px; padding:4px 11px; border:1px solid var(--border-light); border-radius:4px; font-size:13px; color:var(--text-light)">
+        <span style="color:var(--text-sec-light)">Мерчант: </span>312
+      </div>
+      <div style="color:#fd6141; margin-left:4px; font-size:13px">+ Добавить фильтр</div>
+      <div style="margin-left:auto; display:flex; gap:6px">
+        <div style="padding:3px 10px; border-radius:4px; color:var(--text-sec-light); font-size:13px">Сбросить</div>
+        <div style="padding:3px 12px; border-radius:4px; background:#fd6141; color:#fff; font-size:13px; font-weight:500">Применить</div>
+      </div>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:var(--text-ter-light)">
+      <strong>Паттерн:</strong> Card (body padding 12px) &rarr; Flex wrap gap=6 &rarr; Select (minWidth 140) с inline-label через type="secondary" &rarr; primary кнопка справа.
+    </div>
+  </div>
+
+  <h3>Статус-теги</h3>
+  <div class="comp-card">
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px">
+      <span class="tag-sample" style="background:rgba(47,143,74,.1); color:#2f8f4a">● Captured</span>
+      <span class="tag-sample" style="background:rgba(192,132,0,.08); color:#c08400">● In review</span>
+      <span class="tag-sample" style="background:rgba(200,56,30,.08); color:#c8381e">● Declined</span>
+      <span class="tag-sample" style="background:rgba(31,107,148,.1); color:#1f6b94">● Pending</span>
+      <span class="tag-sample" style="background:rgba(26,24,20,.04); color:var(--text-sec-light)">● Voided</span>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px">
+      <span class="tag-sample" style="background:rgba(31,107,148,.1); color:#1f6b94">Уведомление</span>
+      <span class="tag-sample" style="background:rgba(192,132,0,.08); color:#c08400">Ждёт ответа</span>
+      <span class="tag-sample" style="background:rgba(200,56,30,.08); color:#c8381e">Арбитраж</span>
+      <span class="tag-sample" style="background:rgba(47,143,74,.1); color:#2f8f4a">Выиграно</span>
+      <span class="tag-sample" style="background:rgba(200,56,30,.08); color:#c8381e">Проиграно</span>
+    </div>
+    <div style="font-size:12px; color:var(--text-ter-light)">
+      Антовский <code>&lt;Tag color="success|warning|error|processing|default"&gt;</code>. Символ ● (U+25CF) перед текстом для транзакций.
+    </div>
+  </div>
+
+  <h3>Brand Mark (платёжные сети)</h3>
+  <div class="comp-card">
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px">
+      <span style="display:inline-block; width:28px; height:17px; border:1px solid var(--border-light); border-radius:2px; background:#1a1f71; color:#fff; text-align:center; font-size:9px; font-weight:700; line-height:17px">V</span>
+      <span style="display:inline-block; width:28px; height:17px; border:1px solid var(--border-light); border-radius:2px; background:#eb001b; color:#fff; text-align:center; font-size:9px; font-weight:700; line-height:17px">MC</span>
+      <span style="display:inline-block; width:28px; height:17px; border:1px solid var(--border-light); border-radius:2px; background:#4fae3b; color:#fff; text-align:center; font-size:9px; font-weight:700; line-height:17px">МИР</span>
+      <span style="display:inline-block; width:28px; height:17px; border:1px solid var(--border-light); border-radius:2px; background:#0077a6; color:#fff; text-align:center; font-size:9px; font-weight:700; line-height:17px">AX</span>
+      <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-sec-light); margin-left:8px">•••• 4242</span>
+    </div>
+    <div style="font-size:12px; color:var(--text-ter-light)">
+      28 &times; 17px, border-radius 2px, жирный 9px шрифт. Рядом PAN last 4 моноширинным.
+    </div>
+  </div>
+
+  <h3>Drawer (детали)</h3>
+  <div class="comp-card">
+    <div style="font-size:12px; color:var(--text-ter-light); line-height:1.8">
+      <strong>Width:</strong> 440px<br>
+      <strong>Mask:</strong> false (фоновая таблица видна)<br>
+      <strong>Header:</strong> ID + RRN (mono 11px secondary), Сумма (26px/600, tabular-nums), Статус-теги<br>
+      <strong>Body:</strong> Tabs (Детали / Таймлайн / Риск / JSON или Обзор / Эвиденсы / Таймлайн / Ответ)<br>
+      <strong>Footer:</strong> Action-кнопки: Replay webhook, Возврат, Отметить мошенничество (danger), Capture more (primary)
+    </div>
+  </div>
+
+  <h3>Countdown (диспуты)</h3>
+  <div class="comp-card">
+    <div style="display:flex; gap:24px; align-items:baseline; flex-wrap:wrap; margin-bottom:12px">
+      <div>
+        <span style="font-family:'JetBrains Mono',monospace; font-weight:600; font-size:14px; color:#c8381e; background:rgba(200,56,30,.06); padding:2px 8px; border-radius:4px">
+          7ч 42м 18с
+        </span>
+        <div style="font-size:11px; color:var(--text-ter-light); margin-top:4px">urgency: critical (&lt;24h)</div>
+      </div>
+      <div>
+        <span style="font-family:'JetBrains Mono',monospace; font-weight:600; font-size:14px; color:#c08400">
+          45ч 14м 02с
+        </span>
+        <div style="font-size:11px; color:var(--text-ter-light); margin-top:4px">urgency: warning (24-72h)</div>
+      </div>
+      <div>
+        <span style="font-family:'JetBrains Mono',monospace; font-weight:500; font-size:14px; color:var(--text-sec-light)">
+          6д 12ч
+        </span>
+        <div style="font-size:11px; color:var(--text-ter-light); margin-top:4px">urgency: normal (&gt;72h)</div>
+      </div>
+    </div>
+    <div style="font-size:12px; color:var(--text-ter-light)">
+      Live-tick каждую секунду. <code>colorError</code> + фоновая подложка для critical. <code>colorWarning</code> для warn. Нейтральный серый для нормального срока.
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 8. SPACING                                                    -->
+<!-- ============================================================ -->
+<section id="spacing">
+  <h2>8. Сетка и отступы</h2>
+  <p class="section-desc">Сетка: Ant Grid (Row / Col), 24-колоночная. Отступы кратны 4px.</p>
+
+  <h3>Стандартные отступы</h3>
+  <div style="margin:16px 0">
+    <div class="spacing-row"><span class="spacing-label">4px</span><div class="spacing-bar" style="width:16px"></div><span class="spacing-use">Минимальный gap (tag padding inline)</span></div>
+    <div class="spacing-row"><span class="spacing-label">6px</span><div class="spacing-bar" style="width:24px"></div><span class="spacing-use">Button space, filter gaps</span></div>
+    <div class="spacing-row"><span class="spacing-label">8px</span><div class="spacing-bar" style="width:32px"></div><span class="spacing-use">Icon-to-text, compact internal</span></div>
+    <div class="spacing-row"><span class="spacing-label">12px</span><div class="spacing-bar" style="width:48px"></div><span class="spacing-use">Card gap, KPI row gutter, filter bar padding</span></div>
+    <div class="spacing-row"><span class="spacing-label">14px</span><div class="spacing-bar" style="width:56px"></div><span class="spacing-use">Table cell inline padding, KPI card block padding</span></div>
+    <div class="spacing-row"><span class="spacing-label">16px</span><div class="spacing-bar" style="width:64px"></div><span class="spacing-use">Content padding, drawer header/body padding, page gap</span></div>
+    <div class="spacing-row"><span class="spacing-label">18px</span><div class="spacing-bar" style="width:72px"></div><span class="spacing-use">KPI card inline padding, sider item padding</span></div>
+    <div class="spacing-row"><span class="spacing-label">20px</span><div class="spacing-bar" style="width:80px"></div><span class="spacing-use">Header horizontal padding</span></div>
+  </div>
+
+  <h3>Контролы</h3>
+  <table class="token-table">
+    <thead><tr><th>Параметр</th><th>Значение</th></tr></thead>
+    <tbody>
+      <tr><td>controlHeight</td><td class="mono">30px</td></tr>
+      <tr><td>controlHeightSM (antd auto)</td><td class="mono">24px</td></tr>
+      <tr><td>controlHeightLG (antd auto)</td><td class="mono">38px</td></tr>
+      <tr><td>borderRadius</td><td class="mono">4px</td></tr>
+      <tr><td>borderRadiusLG</td><td class="mono">6px</td></tr>
+      <tr><td>borderRadiusSM</td><td class="mono">2px</td></tr>
+    </tbody>
+  </table>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 9. DATA                                                       -->
+<!-- ============================================================ -->
+<section id="data">
+  <h2>9. Отображение данных</h2>
+  <p class="section-desc">Все числа — <code>tabular-nums</code>. Суммы — правое выравнивание. Идентификаторы — моноширинным.</p>
+
+  <h3>Форматирование</h3>
+  <table class="token-table">
+    <thead><tr><th>Тип данных</th><th>Формат</th><th>Пример</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Сумма (RUB)</td>
+        <td class="mono">toLocaleString('ru-RU', {min/maxFractionDigits: 2})</td>
+        <td style="font-variant-numeric:tabular-nums; font-weight:600">18 740,00 <span style="color:var(--text-sec-light); font-weight:400; font-size:11px">RUB</span></td>
+      </tr>
+      <tr>
+        <td>Transaction ID</td>
+        <td class="mono">JetBrains Mono, 12px, secondary</td>
+        <td style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-sec-light)">txn_01HXQ8ZHT14K</td>
+      </tr>
+      <tr>
+        <td>RRN</td>
+        <td class="mono">JetBrains Mono, 11px, secondary</td>
+        <td style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-sec-light)">442901773</td>
+      </tr>
+      <tr>
+        <td>Timestamp</td>
+        <td class="mono">JetBrains Mono, 12px, secondary</td>
+        <td style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-sec-light)">14:22</td>
+      </tr>
+      <tr>
+        <td>Countdown</td>
+        <td class="mono">JetBrains Mono, 14px, 600, цветовой код</td>
+        <td style="font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:600; color:#c8381e">7ч 42м 18с</td>
+      </tr>
+      <tr>
+        <td>Latency</td>
+        <td class="mono">JetBrains Mono, 12px, secondary</td>
+        <td style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-sec-light)">842 ms</td>
+      </tr>
+      <tr>
+        <td>Risk score</td>
+        <td class="mono">Progress bar [52,5] + число (mono 12px)</td>
+        <td>
+          <span style="display:inline-block; width:52px; height:5px; background:var(--border-sec-light); border-radius:2px; position:relative; vertical-align:middle">
+            <span style="display:block; width:14px; height:5px; background:#2f8f4a; border-radius:2px"></span>
+          </span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-sec-light); margin-left:8px">14</span>
+        </td>
+      </tr>
+      <tr>
+        <td>PAN last 4</td>
+        <td class="mono">JetBrains Mono, 12px, secondary</td>
+        <td style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-sec-light)">•••• 4242</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Таблица</h3>
+  <div style="font-size:13px; margin:12px 0; line-height:1.8; color:var(--text-sec-light)">
+    <strong>size:</strong> <code>"small"</code> &middot;
+    <strong>cell padding:</strong> 9px block, 14px inline &middot;
+    <strong>header:</strong> 10-11px uppercase secondary &middot;
+    <strong>hover:</strong> warm rust-soft &middot;
+    <strong>selected:</strong> rust-soft + border highlight &middot;
+    <strong>pagination:</strong> <code>showTotal</code> с ru-RU форматированием
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 10. MOTION                                                    -->
+<!-- ============================================================ -->
+<section id="motion">
+  <h2>10. Анимация</h2>
+  <p class="section-desc">Минимальная. Только то, что помогает ориентироваться.</p>
+
+  <table class="token-table">
+    <thead><tr><th>Элемент</th><th>Свойство</th><th>Длительность</th></tr></thead>
+    <tbody>
+      <tr><td>Переключение темы</td><td class="mono">background-color, color</td><td class="mono">200ms ease</td></tr>
+      <tr><td>Drawer open/close</td><td>Ant Design built-in</td><td class="mono">~300ms</td></tr>
+      <tr><td>Table row hover</td><td class="mono">background-color</td><td>Ant built-in (~100ms)</td></tr>
+      <tr><td>Button hover</td><td>Ant built-in</td><td class="mono">~200ms</td></tr>
+      <tr><td>Countdown</td><td>Текстовое обновление</td><td class="mono">1000ms tick</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    Нет кастомных transition/animation кроме theme switch. Все анимации — стандарт Ant Design 5.
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- 11. DO / DON'T                                                -->
+<!-- ============================================================ -->
+<section id="rules">
+  <h2>11. Do / Don't</h2>
+  <p class="section-desc">Ключевые принципы дизайн-системы.</p>
+
+  <div class="do-dont">
+    <div class="do-card">
+      <strong>Do</strong>
+      Использовать <code>token.colorTextSecondary</code> и <code>&lt;Text type="secondary"&gt;</code> для вторичного текста. Они автоматически адаптируются к теме.
+    </div>
+    <div class="dont-card">
+      <strong>Don't</strong>
+      Хардкодить цвета текста: <code>color: rgba(26,24,20,.68)</code>. В тёмной теме будет нечитаемо.
+    </div>
+  </div>
+
+  <div class="do-dont">
+    <div class="do-card">
+      <strong>Do</strong>
+      Все машинные значения (ID, RRN, PAN, timestamp, latency) — JetBrains Mono. Все человеческие тексты — IBM Plex Sans.
+    </div>
+    <div class="dont-card">
+      <strong>Don't</strong>
+      Смешивать шрифты: merchant name моноширинным или timestamp основным шрифтом.
+    </div>
+  </div>
+
+  <div class="do-dont">
+    <div class="do-card">
+      <strong>Do</strong>
+      <code>font-variant-numeric: tabular-nums</code> для всех числовых колонок. Суммы выровнены по правому краю.
+    </div>
+    <div class="dont-card">
+      <strong>Don't</strong>
+      Пропорциональные цифры в таблицах — колонки «пляшут» при разных значениях.
+    </div>
+  </div>
+
+  <div class="do-dont">
+    <div class="do-card">
+      <strong>Do</strong>
+      Тёплые нейтралы везде. <code>#f4f1ec</code> paper, <code>#0f0d0a</code> body dark. Оба с лёгким yellow/brown undertone.
+    </div>
+    <div class="dont-card">
+      <strong>Don't</strong>
+      Холодные серые (<code>#f5f5f5</code>, <code>#fafafa</code>, <code>#1f1f1f</code>). Они конфликтуют с тёплой палитрой.
+    </div>
+  </div>
+
+  <div class="do-dont">
+    <div class="do-card">
+      <strong>Do</strong>
+      borderRadius: 4px для контролов, 6px для карточек, 2px для тегов. Логотип: rx=4.
+    </div>
+    <div class="dont-card">
+      <strong>Don't</strong>
+      Большие радиусы (8px+). Система визуально чёткая, не bubble-style.
+    </div>
+  </div>
+
+  <div class="do-dont">
+    <div class="do-card">
+      <strong>Do</strong>
+      Сайдбар всегда ink-dark. Он — визуальный якорь. Активный пункт — <code>#fd6141</code> (rust) фон.
+    </div>
+    <div class="dont-card">
+      <strong>Don't</strong>
+      Светлый сайдбар или сайдбар, меняющий цвет с темой. Он стабилен.
+    </div>
+  </div>
+
+  <div class="do-dont">
+    <div class="do-card">
+      <strong>Do</strong>
+      Drawer без маски (<code>mask={false}</code>). Оператор должен видеть таблицу за drawer'ом.
+    </div>
+    <div class="dont-card">
+      <strong>Don't</strong>
+      Модалки для деталей транзакции / диспута. Только drawer — данные рядом с контекстом.
+    </div>
+  </div>
+
+  <div class="do-dont">
+    <div class="do-card">
+      <strong>Do</strong>
+      Countdown urgent (&lt;24h): <code>colorError</code> + полупрозрачный фон. Warning (24-72h): <code>colorWarning</code>. Normal: secondary text.
+    </div>
+    <div class="dont-card">
+      <strong>Don't</strong>
+      Единый стиль для всех дедлайнов. Оператор должен мгновенно различать urgency.
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================ -->
+<!-- FOOTER                                                        -->
+<!-- ============================================================ -->
+<div style="border-top:1px solid var(--border-light); padding-top:20px; margin-top:40px; color:var(--text-ter-light); font-size:12px; display:flex; justify-content:space-between; align-items:center">
+  <div>
+    <svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:-3px; margin-right:6px">
+      <rect width="24" height="24" rx="4" fill="#141210"/>
+      <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+      <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+      <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+    </svg>
+    Платёж UI Guide v1.0
+  </div>
+  <div>April 2026 &middot; Foundation: Ant Design 5 + Brand Tokens</div>
+</div>
+
+</div><!-- .guide -->
+</body>
+</html>

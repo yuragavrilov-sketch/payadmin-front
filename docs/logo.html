@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<title>Платёж — Identity</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f1ec;
+    --paper-2:#eeeae0;
+    --ink:#141210;
+    --ink-2:#3a3530;
+    --ink-3:#6e6a60;
+    --rule:#d9d2c3;
+    --rust:#fd6141;
+    --rust-2:#c75138;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",sans-serif;font-size:14px;line-height:1.5;min-height:100vh}
+  body{padding:40px 48px 80px;max-width:1280px;margin:0 auto}
+  a{color:var(--rust);text-decoration:none}
+  .mono{font-family:"JetBrains Mono",monospace}
+
+  header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--ink);padding-bottom:20px;margin-bottom:40px}
+  header .k{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3)}
+  header h1{font-size:56px;font-weight:300;letter-spacing:-.03em;line-height:1;margin-top:12px}
+  header h1 b{font-weight:500;color:var(--rust)}
+  header .right{text-align:right;font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-3)}
+
+  .grid{display:grid;gap:28px}
+  .g-2{grid-template-columns:1fr 1fr}
+  .g-3{grid-template-columns:repeat(3,1fr)}
+
+  section{margin-bottom:56px}
+  section h2{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--ink-3);font-weight:600;padding-bottom:10px;border-bottom:1px solid var(--rule);margin-bottom:20px;display:flex;justify-content:space-between;align-items:baseline}
+  section h2 span{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--ink-3);font-weight:400;letter-spacing:.12em;text-transform:none}
+
+  .cell{border:1px solid var(--rule);background:#fff;padding:28px;display:flex;flex-direction:column;gap:12px;position:relative}
+  .cell .tag{position:absolute;top:10px;right:12px;font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
+  .cell .desc{font-size:12px;color:var(--ink-3);margin-top:auto}
+  .cell.ink{background:var(--ink);color:#e8e4d9}
+  .cell.ink .desc{color:rgba(255,255,255,.45)}
+  .cell.rust{background:var(--rust);color:#fff}
+  .cell.rust .desc{color:rgba(255,255,255,.8)}
+  .cell.paper{background:var(--paper)}
+  .cell .stage{display:grid;place-items:center;min-height:170px;padding:20px}
+
+  .hero{display:grid;grid-template-columns:1fr 1.1fr;gap:32px;align-items:stretch;margin-bottom:56px}
+  .hero .stage-big{border:1px solid var(--rule);background:#fff;display:grid;place-items:center;min-height:400px;position:relative;overflow:hidden}
+  .hero .stage-big::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--rule) 1px, transparent 1px),linear-gradient(90deg, var(--rule) 1px, transparent 1px);background-size:24px 24px;opacity:.35;pointer-events:none}
+  .hero .rationale{display:flex;flex-direction:column;justify-content:center;padding:0 16px}
+  .hero .rationale .kicker{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--rust);margin-bottom:14px;font-weight:600}
+  .hero .rationale h3{font-size:36px;font-weight:400;line-height:1.15;letter-spacing:-.02em;margin-bottom:18px}
+  .hero .rationale h3 b{font-weight:600}
+  .hero .rationale h3 i{font-style:italic;font-weight:300;color:var(--rust)}
+  .hero .rationale p{color:var(--ink-2);font-size:14.5px;line-height:1.65;margin-bottom:14px}
+  .hero .rationale p b{color:var(--ink);font-weight:500}
+  .hero .rationale ul{list-style:none;padding:0;margin-top:4px}
+  .hero .rationale li{padding:7px 0;border-top:1px solid var(--rule);display:grid;grid-template-columns:120px 1fr;gap:16px;font-size:13px;color:var(--ink-2);line-height:1.5}
+  .hero .rationale li b{color:var(--ink);font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding-top:2px;font-weight:500}
+
+  .lockup{display:flex;align-items:center;gap:16px}
+  .lockup.lg{gap:20px}
+  .lockup .word{font-family:"IBM Plex Sans",sans-serif;font-weight:600;color:var(--ink);letter-spacing:-.015em;line-height:1}
+  .lockup .word .dot{color:var(--rust)}
+  .lockup .word .sub{display:block;font-weight:500;color:var(--ink-3);font-size:.32em;letter-spacing:.3em;text-transform:uppercase;margin-top:.45em}
+  .cell.ink .lockup .word{color:#f4f1ec}
+  .cell.ink .lockup .word .sub{color:rgba(244,241,236,.5)}
+  .cell.rust .lockup .word, .cell.rust .lockup .word .sub{color:#fff}
+  .cell.rust .lockup .word .dot{color:var(--ink)}
+  .cell.mono-cell .lockup .word{color:var(--ink)}
+  .cell.mono-cell .lockup .word .dot{color:var(--ink)}
+
+  /* reusable mark macro — we inline the svg many times */
+
+  .wordmark-scale{background:#fff;border:1px solid var(--rule);padding:36px 28px;display:flex;flex-direction:column;gap:22px}
+  .wordmark-scale .row{display:grid;grid-template-columns:70px 1fr;gap:24px;align-items:baseline;border-bottom:1px dashed var(--rule);padding-bottom:18px}
+  .wordmark-scale .row:last-child{border-bottom:none;padding-bottom:0}
+  .wordmark-scale .row .sz{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--ink-3);letter-spacing:.08em}
+
+  .favicons{display:flex;align-items:center;gap:32px;padding:28px;background:#fff;border:1px solid var(--rule);flex-wrap:wrap}
+
+  .construction{display:flex;align-items:center;gap:28px;padding:32px;background:#fff;border:1px solid var(--rule)}
+  .construction .legend{font-size:12px;color:var(--ink-3);line-height:1.7;flex:1}
+  .construction .legend b{color:var(--ink);font-weight:600}
+  .construction .legend .note{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+  .construction .legend .note i{display:inline-block;width:11px;height:11px;margin-top:4px;flex-shrink:0;border-radius:2px}
+
+  .clear-guide{position:absolute;inset:24%;border:1px dashed rgba(253,97,65,.4);pointer-events:none}
+  .clear-guide::after{content:"clear-space = 1× stem width";position:absolute;bottom:-20px;left:0;font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--rust);letter-spacing:.1em}
+
+  .donts{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .dont{border:1px solid var(--rule);padding:24px 20px 18px;background:#fff;position:relative}
+  .dont .cross{position:absolute;top:8px;right:10px;color:#c8381e;font-weight:700;font-size:13px}
+  .dont .stage{display:grid;place-items:center;min-height:90px;margin-bottom:12px}
+  .dont .reason{font-size:11.5px;color:var(--ink-3);line-height:1.55}
+
+  /* etymology strip */
+  .etymology{display:flex;align-items:stretch;gap:0;border:1px solid var(--rule);background:#fff;margin-bottom:40px;overflow:hidden}
+  .etymology .step{flex:1;padding:24px 20px;border-right:1px solid var(--rule);display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
+  .etymology .step:last-child{border-right:none;background:var(--paper)}
+  .etymology .step .lbl{font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+  .etymology .step .fig{font-size:64px;font-weight:500;font-family:"IBM Plex Sans",sans-serif;color:var(--ink);line-height:1;letter-spacing:-.02em}
+  .etymology .step .note{font-size:11.5px;color:var(--ink-2);line-height:1.5;max-width:180px}
+  .etymology .step .arr{color:var(--rust);font-size:22px;font-weight:500}
+
+  .back{position:fixed;right:16px;bottom:16px;background:#fff;border:1px solid var(--rule);padding:8px 16px;font-size:12px;color:var(--ink-2);font-family:"JetBrains Mono",monospace;letter-spacing:.1em;text-transform:uppercase}
+  .back:hover{border-color:var(--rust);color:var(--rust)}
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <span class="k">Платёж · Identity System · v 2.0</span>
+      <h1>Буква <b>П</b> как ворота.</h1>
+    </div>
+    <div class="right">redesign · 2026-04-15<br>design · yura.gavrilov</div>
+  </header>
+
+  <!-- ETYMOLOGY STRIP -->
+  <section>
+    <div class="etymology">
+      <div class="step">
+        <span class="lbl">Слово</span>
+        <span class="fig">Платёж</span>
+        <span class="note">Ключевое слово системы. Русское, конкретное, без перевода.</span>
+      </div>
+      <div class="step" style="flex:0 0 60px;justify-content:center"><span class="arr">→</span></div>
+      <div class="step">
+        <span class="lbl">Первая буква</span>
+        <span class="fig">П</span>
+        <span class="note">Две стойки и перекладина — архитектура ворот.</span>
+      </div>
+      <div class="step" style="flex:0 0 60px;justify-content:center"><span class="arr">→</span></div>
+      <div class="step">
+        <span class="lbl">Метафора</span>
+        <span class="fig" style="font-size:32px;line-height:1.2">🠖 шлюз<br>🠖 rail</span>
+        <span class="note">Перекладина = payment-rail; стойки = границы потока.</span>
+      </div>
+      <div class="step" style="flex:0 0 60px;justify-content:center"><span class="arr">→</span></div>
+      <div class="step">
+        <span class="lbl">Знак</span>
+        <svg width="72" height="72" viewBox="0 0 24 24">
+          <rect width="24" height="24" rx="4" fill="#141210"/>
+          <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+          <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+          <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+        </svg>
+        <span class="note">П, у которой перекладина — rust-рельса.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="stage-big">
+      <svg width="260" height="260" viewBox="0 0 24 24" aria-label="Платёж mark" role="img">
+        <rect width="24" height="24" rx="4" fill="#141210"/>
+        <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+        <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+        <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+      </svg>
+      <div class="clear-guide"></div>
+    </div>
+
+    <div class="rationale">
+      <div class="kicker">Концепт · <b style="color:var(--rust)">Ворота</b></div>
+      <h3>Две <b>стойки</b>, одна <i>рельса</i>.</h3>
+      <p>Буква <b>П</b> — это не просто инициал слова «Платёж». Это готовая архитектура шлюза: две вертикальные стойки (paper) фиксируют границы потока, горизонтальная перекладина (rust) соединяет их и сама становится <b>payment-rail</b> — линией, через которую проходит транзакция. Знак читается одновременно как кириллическая буква, как инженерный чертёж ворот и как графическое воплощение слова «шлюз».</p>
+      <ul>
+        <li><b>Суверенный</b>Русская буква, не перевод латинской «P».</li>
+        <li><b>Архитектурный</b>Форма П = геометрия ворот, метафора встроена в букву.</li>
+        <li><b>Читается</b>16 → 240 px без потери узнаваемости.</li>
+        <li><b>Функциональный</b>Rust-перекладина = primary-токен бренда (#fd6141); при проблемах с токеном проверяется глазом.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- LOCKUPS -->
+  <section>
+    <h2>① Lockups <span>mark + wordmark — 4 canonical variants</span></h2>
+    <div class="grid g-2">
+
+      <div class="cell paper">
+        <span class="tag">01 · paper · primary</span>
+        <div class="stage">
+          <div class="lockup lg">
+            <svg width="60" height="60" viewBox="0 0 24 24">
+              <rect width="24" height="24" rx="4" fill="#141210"/>
+              <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+              <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+              <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+            </svg>
+            <div class="word" style="font-size:40px">Плат<span class="dot">ё</span>ж<span class="sub">Оператор · L3</span></div>
+          </div>
+        </div>
+        <span class="desc">Основной lockup. Заголовки, документы, splash, inline-заголовки.</span>
+      </div>
+
+      <div class="cell ink">
+        <span class="tag">02 · ink · reversed</span>
+        <div class="stage">
+          <div class="lockup lg">
+            <svg width="60" height="60" viewBox="0 0 24 24">
+              <rect width="24" height="24" rx="4" fill="#f4f1ec"/>
+              <rect x="4" y="5" width="3" height="14" rx=".7" fill="#141210"/>
+              <rect x="17" y="5" width="3" height="14" rx=".7" fill="#141210"/>
+              <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+            </svg>
+            <div class="word" style="font-size:40px">Плат<span class="dot">ё</span>ж<span class="sub">Оператор · L3</span></div>
+          </div>
+        </div>
+        <span class="desc">Для sider'а, тёмной темы, ночного режима, login-сплэша на тёмном фоне.</span>
+      </div>
+
+      <div class="cell rust">
+        <span class="tag">03 · rust · accent</span>
+        <div class="stage">
+          <div class="lockup lg">
+            <svg width="60" height="60" viewBox="0 0 24 24">
+              <rect width="24" height="24" rx="4" fill="#141210"/>
+              <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+              <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+              <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#f4f1ec"/>
+            </svg>
+            <div class="word" style="font-size:40px">Плат<span class="dot">ё</span>ж<span class="sub">Оператор · L3</span></div>
+          </div>
+        </div>
+        <span class="desc">Только для моментов акцента: баннеры, hero-бейджи, запуск, промо-поверхности.</span>
+      </div>
+
+      <div class="cell mono-cell">
+        <span class="tag">04 · mono · single ink</span>
+        <div class="stage">
+          <div class="lockup lg">
+            <svg width="60" height="60" viewBox="0 0 24 24">
+              <rect width="24" height="24" rx="4" fill="#141210"/>
+              <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+              <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+              <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#f4f1ec"/>
+            </svg>
+            <div class="word" style="font-size:40px">Плат<span class="dot">ё</span>ж<span class="sub">Оператор · L3</span></div>
+          </div>
+        </div>
+        <span class="desc">Одноцветная печать: факсы, юридические документы, ч/б отчёты. Когда цвет ненадёжен.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCALE -->
+  <section>
+    <h2>② Scale <span>mark reads from 16px favicon to 128px hero</span></h2>
+    <div class="wordmark-scale">
+      <div class="row">
+        <span class="sz">16 / fav</span>
+        <div class="lockup" style="gap:10px">
+          <svg width="16" height="16" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+          <span style="font-size:14px;font-weight:600">Платёж</span>
+        </div>
+      </div>
+      <div class="row">
+        <span class="sz">22 / app</span>
+        <div class="lockup" style="gap:12px">
+          <svg width="22" height="22" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+          <span style="font-size:17px;font-weight:600;letter-spacing:-.01em">Платёж<span style="color:var(--ink-3);font-weight:500;font-size:10px;letter-spacing:.2em;text-transform:uppercase;margin-left:8px">Админ</span></span>
+        </div>
+      </div>
+      <div class="row">
+        <span class="sz">32 / ui</span>
+        <div class="lockup" style="gap:14px">
+          <svg width="32" height="32" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+          <span style="font-size:24px;font-weight:600;letter-spacing:-.015em">Платёж</span>
+        </div>
+      </div>
+      <div class="row">
+        <span class="sz">48 / doc</span>
+        <div class="lockup" style="gap:18px">
+          <svg width="48" height="48" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+          <span style="font-size:36px;font-weight:600;letter-spacing:-.02em">Платёж</span>
+        </div>
+      </div>
+      <div class="row">
+        <span class="sz">128 / hero</span>
+        <div class="lockup" style="gap:28px">
+          <svg width="128" height="128" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+          <span style="font-size:96px;font-weight:500;letter-spacing:-.025em;line-height:1">Плат<span style="color:var(--rust)">ё</span>ж</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAVICONS -->
+  <section>
+    <h2>③ App icon / favicon <span>isolated mark on both tile variants</span></h2>
+    <div class="favicons">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <svg width="16" height="16" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+        <span class="mono" style="font-size:9px;color:var(--ink-3);letter-spacing:.1em">16</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <svg width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+        <span class="mono" style="font-size:9px;color:var(--ink-3);letter-spacing:.1em">24</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <svg width="32" height="32" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+        <span class="mono" style="font-size:9px;color:var(--ink-3);letter-spacing:.1em">32</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <svg width="48" height="48" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+        <span class="mono" style="font-size:9px;color:var(--ink-3);letter-spacing:.1em">48</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <svg width="96" height="96" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+        <span class="mono" style="font-size:9px;color:var(--ink-3);letter-spacing:.1em">96</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-left:24px;padding-left:32px;border-left:1px solid var(--rule)">
+        <svg width="96" height="96" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#f4f1ec" stroke="#d9d2c3" stroke-width=".5"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#141210"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#141210"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+        <span class="mono" style="font-size:9px;color:var(--ink-3);letter-spacing:.1em">96 / light tile</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONSTRUCTION -->
+  <section>
+    <h2>④ Construction <span>24 × 24 grid · geometric anatomy</span></h2>
+    <div class="construction">
+      <svg width="300" height="300" viewBox="-4 -4 32 32">
+        <g stroke="rgba(253,97,65,.2)" stroke-width=".06" fill="none">
+          <path d="M0 0 H24 M0 4 H24 M0 8 H24 M0 12 H24 M0 16 H24 M0 20 H24 M0 24 H24"/>
+          <path d="M0 0 V24 M4 0 V24 M8 0 V24 M12 0 V24 M16 0 V24 M20 0 V24 M24 0 V24"/>
+        </g>
+        <rect x="0" y="0" width="24" height="24" rx="4" fill="none" stroke="#141210" stroke-width=".2" stroke-dasharray="1 .5"/>
+
+        <rect width="24" height="24" rx="4" fill="#141210" opacity=".94"/>
+        <rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+        <rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/>
+        <rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/>
+
+        <g font-family="JetBrains Mono" font-size=".95" fill="#fd6141">
+          <line x1="-1" y1="4.5" x2="-.3" y2="4.5" stroke="#fd6141" stroke-width=".08"/>
+          <text x="-3.3" y="4.9">y 4.5</text>
+          <line x1="-1" y1="7.1" x2="-.3" y2="7.1" stroke="#fd6141" stroke-width=".08"/>
+          <text x="-3.3" y="7.5">y 7.1</text>
+          <text x="10" y="6.3" text-anchor="middle" fill="#fff">rail · h 2.6</text>
+
+          <line x1="4" y1="24.6" x2="4" y2="25" stroke="#6e6a60" stroke-width=".08"/>
+          <line x1="7" y1="24.6" x2="7" y2="25" stroke="#6e6a60" stroke-width=".08"/>
+          <text x="5.5" y="26.3" text-anchor="middle" fill="#6e6a60">w 3</text>
+          <line x1="17" y1="24.6" x2="17" y2="25" stroke="#6e6a60" stroke-width=".08"/>
+          <line x1="20" y1="24.6" x2="20" y2="25" stroke="#6e6a60" stroke-width=".08"/>
+          <text x="18.5" y="26.3" text-anchor="middle" fill="#6e6a60">w 3</text>
+
+          <text x="24.5" y="12" fill="#6e6a60">post · h 14</text>
+          <line x1="24.2" y1="12" x2="20.2" y2="12" stroke="#6e6a60" stroke-width=".05"/>
+          <text x="-3.3" y="12" fill="#6e6a60">post · h 14</text>
+          <line x1="-.7" y1="12" x2="3.8" y2="12" stroke="#6e6a60" stroke-width=".05"/>
+        </g>
+      </svg>
+
+      <div class="legend">
+        <div class="note"><i style="background:#141210"></i><div><b>Tile — 24 × 24, r = 4.</b> Соответствует бренд-токену <span class="mono" style="color:var(--ink)">borderRadius: 4</span>. Clear-space вокруг знака ≥ 1× ширины стойки (3 юнита).</div></div>
+        <div class="note"><i style="background:#f4f1ec;border:1px solid var(--rule)"></i><div><b>Две стойки (paper).</b> Вертикальные опоры буквы П. Координаты: <span class="mono" style="color:var(--ink)">x 4 и x 17, w 3, h 14</span>. Равная толщина с rust-перекладиной — визуальный баланс.</div></div>
+        <div class="note"><i style="background:#fd6141"></i><div><b>Перекладина (rust).</b> Горизонтальная балка на <span class="mono" style="color:var(--ink)">y 4.5, h 2.6, w 16</span>. Перекрывает верх обеих стоек, соединяя их в букву П. Цвет привязан к <span class="mono" style="color:var(--ink)">--colorPrimary</span>.</div></div>
+        <div class="note"><i style="background:transparent;border:1px dashed var(--rust)"></i><div><b>Clear-space.</b> Минимальное расстояние до других элементов — одна ширина стойки (3 юнита во viewBox'е, или 12.5% размера в px).</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- IN CONTEXT -->
+  <section>
+    <h2>⑤ In context <span>how it sits in the admin shell</span></h2>
+    <div class="grid g-2">
+      <div class="cell" style="padding:0;overflow:hidden">
+        <span class="tag" style="color:#fd6141">sider · in app</span>
+        <div style="background:#141210;color:#e8e4d9;padding:0">
+          <div style="padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px">
+            <svg width="22" height="22" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+            <span style="font-weight:600;font-size:15px;color:#fff;letter-spacing:-.01em">Платёж</span>
+            <span style="font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.22em;text-transform:uppercase;margin-left:auto;font-weight:500">Админ</span>
+          </div>
+          <div style="padding:14px 18px;font-size:10px;color:rgba(255,255,255,.38);letter-spacing:.22em;text-transform:uppercase;font-weight:600">Операции</div>
+          <div style="padding:8px 18px;color:rgba(255,255,255,.68);font-size:13px">Дашборд</div>
+          <div style="padding:8px 18px;color:#fff;background:#fd6141;font-size:13px">☰ Транзакции</div>
+          <div style="padding:8px 18px;color:rgba(255,255,255,.68);font-size:13px;margin-bottom:20px">Возвраты</div>
+        </div>
+      </div>
+
+      <div class="cell" style="padding:0;overflow:hidden;background:linear-gradient(140deg,#f4f1ec,#eeeae0)">
+        <span class="tag">splash · login</span>
+        <div style="padding:56px 40px;display:flex;flex-direction:column;gap:20px;align-items:flex-start">
+          <svg width="72" height="72" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+          <div style="font-size:52px;font-weight:500;letter-spacing:-.025em;line-height:1;color:var(--ink)">Плат<span style="color:var(--rust)">ё</span>ж</div>
+          <div style="font-size:13px;color:var(--ink-3);letter-spacing:.02em">Вход для операторов.</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:.15em;margin-top:auto">v 5.12.0 · eu-central-1</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DON'TS -->
+  <section>
+    <h2>⑥ Don'ts <span>четыре способа сломать знак</span></h2>
+    <div class="donts">
+      <div class="dont">
+        <span class="cross">✕</span>
+        <div class="stage">
+          <svg width="64" height="64" viewBox="0 0 24 24" style="transform:rotate(-12deg)"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+        </div>
+        <div class="reason">Не вращать. Перекладина — это rail, она горизонтальна. Наклон превращает П в Г.</div>
+      </div>
+      <div class="dont">
+        <span class="cross">✕</span>
+        <div class="stage">
+          <svg width="64" height="64" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#f4f1ec"/><rect x="11" y="4" width="2" height="4" fill="#fd6141"/></svg>
+        </div>
+        <div class="reason">Не добавлять «засечку» или крестик сверху. П самодостаточна, дополнений не нужно.</div>
+      </div>
+      <div class="dont">
+        <span class="cross">✕</span>
+        <div class="stage">
+          <svg width="64" height="64" viewBox="0 0 24 24"><rect width="24" height="24" rx="12" fill="#141210"/><rect x="4" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="17" y="5" width="3" height="14" rx=".7" fill="#f4f1ec"/><rect x="4" y="4.5" width="16" height="2.6" rx=".7" fill="#fd6141"/></svg>
+        </div>
+        <div class="reason">Не круглить плитку в пилюлю или круг. Только r = 4 — совпадает с borderRadius бренда.</div>
+      </div>
+      <div class="dont">
+        <span class="cross">✕</span>
+        <div class="stage">
+          <svg width="64" height="64" viewBox="0 0 24 24"><rect width="24" height="24" rx="4" fill="#141210"/><rect x="3" y="5" width="5" height="14" rx="1" fill="#f4f1ec"/><rect x="16" y="5" width="5" height="14" rx="1" fill="#f4f1ec"/><rect x="3" y="4" width="18" height="4" rx=".7" fill="#fd6141"/></svg>
+        </div>
+        <div class="reason">Не утолщать стойки и перекладину. Пропорции строго 3 / 2.6 юнитов — иначе П превращается в тумбу.</div>
+      </div>
+    </div>
+  </section>
+
+</body>
+<a href="./index.html" class="back">← Назад</a>
+</html>
