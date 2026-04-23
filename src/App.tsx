@@ -32,7 +32,7 @@ const MoonIcon = () => (
 );
 
 function buildMenuItems(): MenuProps['items'] {
-  const groups: NavGroup[] = ['ops', 'ledger', 'control'];
+  const groups: NavGroup[] = ['ops', 'ledger', 'merchants', 'control'];
   return groups.map(g => ({
     key: `group-${g}`,
     type: 'group' as const,

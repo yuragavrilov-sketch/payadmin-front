@@ -8,12 +8,11 @@ import 'dayjs/locale/ru';
 import { makeBrandTheme, type ThemeMode } from './theme';
 import App from './App';
 import LoginPage from './pages/Login';
-import TransactionsPage from './pages/Transactions';
-import DisputesPage from './pages/Disputes';
 import MerchantsPage from './pages/Merchants';
 import {
-  Dashboard, Refunds, Chargebacks, Settlements, Payouts,
-  Reconciliation, RiskRules, Webhooks, ApiKeys, Settings,
+  Dashboard, Transactions, Refunds, Disputes, Chargebacks,
+  Settlements, Payouts, Reconciliation,
+  RiskRules, Webhooks, ApiKeys, Settings,
 } from './pages/skeletons';
 import * as keycloak from './auth/keycloak';
 import type { UserProfile } from './auth/keycloak';
@@ -73,9 +72,9 @@ function Root() {
       element: <App mode={mode} onThemeChange={setMode} profile={profile} onLogout={handleLogout} />,
       children: [
         { index: true, element: <Dashboard /> },
-        { path: 'transactions', element: <TransactionsPage /> },
+        { path: 'transactions', element: <Transactions /> },
         { path: 'refunds', element: <Refunds /> },
-        { path: 'disputes', element: <DisputesPage /> },
+        { path: 'disputes', element: <Disputes /> },
         { path: 'chargebacks', element: <Chargebacks /> },
         { path: 'settlements', element: <Settlements /> },
         { path: 'payouts', element: <Payouts /> },

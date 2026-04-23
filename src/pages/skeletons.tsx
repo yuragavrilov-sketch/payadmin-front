@@ -52,6 +52,30 @@ export const Dashboard = () => (
   />
 );
 
+export const Transactions = () => (
+  <SkeletonPage
+    title="Транзакции"
+    subtitle="Лента операций со всеми статусами, фильтрами и drill-down в детали"
+    bullets={[
+      'Фильтры по статусу, методу, 3DS, риск-факторам',
+      'Drawer с деталями: таймлайн, риск, raw JSON',
+      'Действия: возврат, отмена авторизации, разбор инцидента',
+    ]}
+  />
+);
+
+export const Disputes = () => (
+  <SkeletonPage
+    title="Диспуты"
+    subtitle="Очередь споров с SLA-таймером и работой по ответу банку"
+    bullets={[
+      'Live-countdown по дедлайну ответа',
+      'Сбор эвиденсов: чек, переписка с клиентом, факт доставки',
+      'Шаблоны ответов и история переписки с issuer',
+    ]}
+  />
+);
+
 export const Refunds = () => (
   <SkeletonPage
     title="Возвраты"

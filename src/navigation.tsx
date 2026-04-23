@@ -6,7 +6,7 @@ import {
   ApiOutlined, SettingOutlined, KeyOutlined,
 } from '@ant-design/icons';
 
-export type NavGroup = 'ops' | 'ledger' | 'control';
+export type NavGroup = 'ops' | 'ledger' | 'merchants' | 'control';
 
 export interface NavItem {
   key: string;
@@ -20,6 +20,7 @@ export interface NavItem {
 export const groupLabels: Record<NavGroup, string> = {
   ops: 'Операции',
   ledger: 'Леджер',
+  merchants: 'Мерчанты',
   control: 'Контроль',
 };
 
@@ -34,7 +35,8 @@ export const navItems: NavItem[] = [
   { key: 'payouts',        path: '/payouts',        label: 'Выплаты',      icon: <RiseOutlined />,            group: 'ledger' },
   { key: 'reconciliation', path: '/reconciliation', label: 'Сверка',       icon: <ReconciliationOutlined />,  group: 'ledger' },
 
-  { key: 'merchants',      path: '/merchants',      label: 'Мерчанты',     icon: <ShopOutlined />,            group: 'control' },
+  { key: 'merchants',      path: '/merchants',      label: 'Список',       icon: <ShopOutlined />,            group: 'merchants' },
+
   { key: 'risk',           path: '/risk',           label: 'Риск-правила', icon: <SafetyOutlined />,          group: 'control' },
   { key: 'webhooks',       path: '/webhooks',       label: 'Webhooks',     icon: <ApiOutlined />,             group: 'control' },
   { key: 'api-keys',       path: '/api-keys',       label: 'API-ключи',    icon: <KeyOutlined />,             group: 'control' },
