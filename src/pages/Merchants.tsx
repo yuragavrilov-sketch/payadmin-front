@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Card, Col, Row, Space, Button, Tag, Select,
   Table, Drawer, Tabs, Descriptions, Timeline, Typography, Flex,
-  theme as antdTheme, Progress,
+  theme as antdTheme, Progress, Alert, Spin, App as AntApp,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -11,10 +11,15 @@ import {
   CheckCircleOutlined, CheckCircleFilled,
 } from '@ant-design/icons';
 import {
-  merchants, merchantsKpi, statusLabels, statusColors,
-  riskLabels, riskColors,
-  type Merchant, type MerchantStatus,
-} from '../merchants-mock';
+  useMerchantsList, useMerchantsKpi,
+  useMerchantDetails, useMerchantTariffs, useMerchantStats, useMerchantEvents,
+  useBlockMerchant, useUnblockMerchant, useApproveMerchant,
+} from '../api/merchants';
+import type {
+  MerchantListItem, MerchantDetails, MerchantStatus,
+  MerchantsListQuery,
+} from '../api/types';
+import { statusLabels, statusColors, riskLabels, riskColors } from '../merchants-mock';
 import Kpi from '../components/Kpi';
 import { brand } from '../theme';
 
@@ -22,7 +27,6 @@ const { Title, Text } = Typography;
 
 const fmtRub = (n: number) =>
   n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
 const fmtNum = (n: number) => n.toLocaleString('ru-RU');
 
 /* ============================== FILTER BAR ============================== */
@@ -72,7 +76,7 @@ function FilterBar() {
 
 /* ============================== RISK BADGE ============================== */
 
-function RiskBadge({ level }: { level: Merchant['riskLevel'] }) {
+function RiskBadge({ level }: { level: MerchantListItem['riskLevel'] }) {
   return (
     <Tag color={level === 'hi' ? 'error' : level === 'mid' ? 'warning' : 'success'}>
       {riskLabels[level]}
@@ -82,56 +86,83 @@ function RiskBadge({ level }: { level: Merchant['riskLevel'] }) {
 
 /* ============================== DRAWER ============================== */
 
-interface MerchantPanelProps { merchant: Merchant | null; onClose: () => void; }
+interface MerchantPanelProps { id: string | null; onClose: () => void; }
 
-function MerchantPanel({ merchant: m, onClose }: MerchantPanelProps) {
+function MerchantPanel({ id, onClose }: MerchantPanelProps) {
   const { token } = antdTheme.useToken();
-  if (!m) return null;
+  const { message } = AntApp.useApp();
 
-  const ProfileTab = (
+  const details = useMerchantDetails(id);
+  const tariffs = useMerchantTariffs(id);
+  const stats   = useMerchantStats(id, '30d');
+  const events  = useMerchantEvents(id);
+
+  const block   = useBlockMerchant();
+  const unblock = useUnblockMerchant();
+  const approve = useApproveMerchant();
+
+  if (!id) return null;
+
+  const m: MerchantDetails | undefined = details.data;
+  const isBusy = block.isPending || unblock.isPending || approve.isPending;
+
+  const handleBlock = () => {
+    if (!m) return;
+    // TODO: заменить на диалог с reason
+    block.mutate(
+      { id: m.id, body: { reason: 'Блокировка оператором' } },
+      { onSuccess: () => message.success('Мерчант заблокирован') },
+    );
+  };
+  const handleUnblock = () => {
+    if (!m) return;
+    unblock.mutate(m.id, { onSuccess: () => message.success('Мерчант разблокирован') });
+  };
+  const handleApprove = () => {
+    if (!m) return;
+    approve.mutate({ id: m.id, body: {} }, { onSuccess: () => message.success('Мерчант одобрен') });
+  };
+
+  const ProfileTab = m && (
     <Descriptions bordered column={1} size="small"
       styles={{ label: { background: token.colorFillQuaternary, width: 130 } }}
       className="desc-label"
       items={[
-        { key: 'legal', label: 'Юрлицо', children: <>{m.legalName}<br /><Text type="secondary" className="mono cell-sub">ИНН {m.inn}</Text></> },
-        { key: 'mcc', label: 'MCC', children: <><Text className="mono">{m.mcc}</Text> · {m.mccLabel}</> },
-        { key: 'risk', label: 'Риск-профиль', children: <RiskBadge level={m.riskLevel} /> },
-        { key: 'mgr', label: 'Менеджер', children: m.manager },
-        { key: 'email', label: 'Email', children: <Text className="mono cell-sub">{m.contactEmail}</Text> },
-        { key: 'phone', label: 'Телефон', children: <Text className="mono cell-sub">{m.contactPhone}</Text> },
-        { key: 'site', label: 'Сайт', children: <Text className="mono cell-sub">{m.website}</Text> },
-        { key: 'conn', label: 'Подключён', children: <Text className="mono cell-sub">{m.connectedAt}</Text> },
+        { key: 'legal', label: 'Юрлицо',       children: <>{m.legalName}<br /><Text type="secondary" className="mono cell-sub">ИНН {m.inn}</Text></> },
+        { key: 'mcc',   label: 'MCC',          children: <><Text className="mono">{m.mcc}</Text> · {m.mccLabel}</> },
+        { key: 'risk',  label: 'Риск-профиль', children: <RiskBadge level={m.riskLevel} /> },
+        { key: 'mgr',   label: 'Менеджер',     children: m.managerName },
+        { key: 'email', label: 'Email',        children: <Text className="mono cell-sub">{m.contactEmail}</Text> },
+        { key: 'phone', label: 'Телефон',      children: <Text className="mono cell-sub">{m.contactPhone}</Text> },
+        { key: 'site',  label: 'Сайт',         children: <Text className="mono cell-sub">{m.website}</Text> },
+        { key: 'conn',  label: 'Подключён',    children: <Text className="mono cell-sub">{m.connectedAt}</Text> },
       ]} />
   );
 
-  const TariffsTab = (
+  const TariffsTab = tariffs.data && (
     <div>
       <Table
-        dataSource={m.tariffs}
+        dataSource={tariffs.data.rows}
         rowKey="method"
         size="small"
         pagination={false}
         columns={[
           { title: 'Метод', dataIndex: 'method', key: 'method' },
-          { title: '%', dataIndex: 'percent', key: 'percent', align: 'right',
-            render: v => <Text className="mono cell-id">{v.toFixed(1)}</Text>,
-          },
+          { title: '%',     dataIndex: 'percent', key: 'percent', align: 'right',
+            render: v => <Text className="mono cell-id">{v.toFixed(1)}</Text> },
           { title: 'Fix ₽', dataIndex: 'fixRub', key: 'fixRub', align: 'right',
-            render: v => <Text className="mono cell-id">{v}</Text>,
-          },
+            render: v => <Text className="mono cell-id">{v}</Text> },
           { title: 'Min ₽', dataIndex: 'minRub', key: 'minRub', align: 'right',
-            render: v => <Text className="mono cell-id">{v}</Text>,
-          },
-          { title: 'Hold', dataIndex: 'holdDays', key: 'holdDays', align: 'right',
-            render: v => <Text className="mono cell-id">{v}д</Text>,
-          },
+            render: v => <Text className="mono cell-id">{v}</Text> },
+          { title: 'Hold',  dataIndex: 'holdDays', key: 'holdDays', align: 'right',
+            render: v => <Text className="mono cell-id">{v}д</Text> },
         ]}
       />
       <Flex vertical gap={8} style={{ marginTop: 16 }}>
         {[
-          ['Лимит на транзакцию', '₽ 500 000'],
-          ['Суточный лимит', '₽ 50 000 000'],
-          ['Velocity', '600 txn/h'],
+          ['Лимит на транзакцию', `₽ ${fmtNum(tariffs.data.limits.perTxnRub)}`],
+          ['Суточный лимит',      `₽ ${fmtNum(tariffs.data.limits.dailyRub)}`],
+          ['Velocity',            `${fmtNum(tariffs.data.limits.velocityPerHour)} txn/h`],
         ].map(([label, val]) => (
           <Flex key={label} justify="space-between">
             <Text type="secondary" className="text-sm">{label}</Text>
@@ -142,15 +173,15 @@ function MerchantPanel({ merchant: m, onClose }: MerchantPanelProps) {
     </div>
   );
 
-  const StatsTab = (
+  const StatsTab = stats.data && m && (
     <div>
       {[
-        { label: 'Оборот (30д)', value: m.volume30d > 0 ? `₽ ${fmtRub(m.volume30d)}` : '—' },
-        { label: 'Транзакций (30д)', value: m.txnCount30d > 0 ? fmtNum(m.txnCount30d) : '—' },
-        { label: 'Средний чек', value: m.avgTicket > 0 ? `₽ ${fmtRub(m.avgTicket)}` : '—' },
-        { label: 'Успешность', value: m.successRate > 0 ? `${m.successRate}%` : '—', accent: m.successRate < 92 },
-        { label: 'Диспуты (открытые)', value: String(m.disputesOpen), accent: m.disputesOpen > 3 },
-        { label: 'Диспут-рейт', value: m.disputeRate > 0 ? `${m.disputeRate}%` : '—', accent: m.disputeRate > 1 },
+        { label: 'Оборот (30д)',        value: stats.data.volume > 0 ? `₽ ${fmtRub(stats.data.volume)}` : '—' },
+        { label: 'Транзакций (30д)',    value: stats.data.txnCount > 0 ? fmtNum(stats.data.txnCount) : '—' },
+        { label: 'Средний чек',         value: stats.data.avgTicket > 0 ? `₽ ${fmtRub(stats.data.avgTicket)}` : '—' },
+        { label: 'Успешность',          value: stats.data.successRate > 0 ? `${stats.data.successRate}%` : '—', accent: stats.data.successRate > 0 && stats.data.successRate < 92 },
+        { label: 'Диспуты (открытые)',  value: String(stats.data.disputesOpen), accent: stats.data.disputesOpen > 3 },
+        { label: 'Диспут-рейт',         value: stats.data.disputeRate > 0 ? `${stats.data.disputeRate}%` : '—', accent: stats.data.disputeRate > 1 },
       ].map(row => (
         <Flex key={row.label} align="center" justify="space-between"
           className="stat-row"
@@ -165,9 +196,9 @@ function MerchantPanel({ merchant: m, onClose }: MerchantPanelProps) {
     </div>
   );
 
-  const HistoryTab = (
+  const HistoryTab = events.data && (
     <Timeline
-      items={m.events.map(ev => ({
+      items={events.data.items.map(ev => ({
         color: ev.state === 'ok' ? 'green' : ev.state === 'warn' ? 'orange' : ev.state === 'fail' ? 'red' : 'blue',
         dot: ev.state === 'ok' ? <CheckCircleFilled style={{ color: token.colorSuccess }} /> : undefined,
         children: (
@@ -181,71 +212,100 @@ function MerchantPanel({ merchant: m, onClose }: MerchantPanelProps) {
     />
   );
 
+  const body = details.isLoading ? (
+    <Flex justify="center" align="center" style={{ padding: 60 }}><Spin /></Flex>
+  ) : details.isError ? (
+    <Alert type="error" showIcon message="Не удалось загрузить мерчанта" description={String(details.error)} style={{ margin: 16 }} />
+  ) : (
+    <Tabs
+      defaultActiveKey="profile"
+      className="drawer-tabs"
+      items={[
+        { key: 'profile', label: 'Профиль',    children: <div className="tab-content">{ProfileTab}</div> },
+        { key: 'tariffs', label: 'Тарифы',     children: <div className="tab-content">{tariffs.isLoading ? <Spin /> : TariffsTab}</div> },
+        { key: 'stats',   label: 'Статистика', children: <div className="tab-content">{stats.isLoading ? <Spin /> : StatsTab}</div> },
+        { key: 'history', label: 'История',    children: <div className="tab-content">{events.isLoading ? <Spin /> : HistoryTab}</div> },
+      ]}
+    />
+  );
+
   return (
     <Drawer
-      open={!!m}
+      open={!!id}
       onClose={onClose}
       width={480}
       mask={false}
       closeIcon={<CloseOutlined />}
-      title={
+      title={m ? (
         <Space direction="vertical" size={2} style={{ width: '100%' }}>
-          <Text type="secondary" className="mono drawer-id">
-            {m.id} · MCC {m.mcc}
-          </Text>
-          <div className="drawer-title" style={{ color: token.colorText }}>
-            {m.name}
-          </div>
+          <Text type="secondary" className="mono drawer-id">{m.id} · MCC {m.mcc}</Text>
+          <div className="drawer-title" style={{ color: token.colorText }}>{m.name}</div>
           <Text type="secondary" className="text-sm">{m.legalName}</Text>
           <Space size={4} className="drawer-tags">
             <Tag color={statusColors[m.status]}>● {statusLabels[m.status]}</Tag>
             <RiskBadge level={m.riskLevel} />
-            {m.disputesOpen > 0 && <Tag color="warning">{m.disputesOpen} диспут{m.disputesOpen > 1 ? (m.disputesOpen < 5 ? 'а' : 'ов') : ''}</Tag>}
+            {m.stats30d.disputesOpen > 0 && (
+              <Tag color="warning">
+                {m.stats30d.disputesOpen} диспут{m.stats30d.disputesOpen > 1 ? (m.stats30d.disputesOpen < 5 ? 'а' : 'ов') : ''}
+              </Tag>
+            )}
           </Space>
         </Space>
-      }
+      ) : <Spin size="small" />}
       styles={{
         header: { padding: 16, borderBottom: `1px solid ${token.colorBorderSecondary}` },
         body: { padding: 0 },
         footer: { padding: 10 },
       }}
-      footer={
+      footer={m && (
         <Flex gap={6} justify="flex-end" wrap>
-          <Button icon={<EditOutlined />}>Редактировать</Button>
+          <Button icon={<EditOutlined />} disabled={isBusy}>Редактировать</Button>
           {m.status === 'active' && (
-            <Button danger icon={<StopOutlined />}>Заблокировать</Button>
+            <Button danger icon={<StopOutlined />} loading={block.isPending} onClick={handleBlock}>
+              Заблокировать
+            </Button>
           )}
           {m.status === 'blocked' && (
-            <Button icon={<CheckCircleOutlined />} style={{ color: brand.rust, borderColor: brand.rust }}>
+            <Button icon={<CheckCircleOutlined />} loading={unblock.isPending} onClick={handleUnblock}
+              style={{ color: brand.rust, borderColor: brand.rust }}>
               Разблокировать
             </Button>
           )}
           {m.status === 'pending' && (
-            <Button type="primary" icon={<CheckCircleOutlined />}>Одобрить</Button>
+            <Button type="primary" icon={<CheckCircleOutlined />} loading={approve.isPending} onClick={handleApprove}>
+              Одобрить
+            </Button>
           )}
         </Flex>
-      }
+      )}
     >
-      <Tabs
-        defaultActiveKey="profile"
-        className="drawer-tabs"
-        items={[
-          { key: 'profile', label: 'Профиль', children: <div className="tab-content">{ProfileTab}</div> },
-          { key: 'tariffs', label: 'Тарифы', children: <div className="tab-content">{TariffsTab}</div> },
-          { key: 'stats', label: 'Статистика', children: <div className="tab-content">{StatsTab}</div> },
-          { key: 'history', label: 'История', children: <div className="tab-content">{HistoryTab}</div> },
-        ]}
-      />
+      {body}
     </Drawer>
   );
 }
 
 /* ============================== PAGE ============================== */
 
-export default function MerchantsPage() {
-  const [selected, setSelected] = useState<Merchant | null>(null);
+const PAGE_SIZE = 20;
 
-  const columns: ColumnsType<Merchant> = useMemo(() => [
+export default function MerchantsPage() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  const query: MerchantsListQuery = useMemo(() => ({
+    page,
+    pageSize: PAGE_SIZE,
+    sort: 'volume30d',
+    dir: 'desc',
+  }), [page]);
+
+  const list = useMerchantsList(query);
+  const kpi  = useMerchantsKpi();
+
+  const items = list.data?.items ?? [];
+  const total = list.data?.total ?? 0;
+
+  const columns: ColumnsType<MerchantListItem> = useMemo(() => [
     {
       title: 'Мерчант', dataIndex: 'name', key: 'name',
       render: (_, r) => (
@@ -277,40 +337,40 @@ export default function MerchantsPage() {
       },
     },
     {
-      title: 'Оборот (30д)', dataIndex: 'volume30d', key: 'volume30d', align: 'right', width: 150,
-      render: v => v > 0 ? (
-        <span className="cell-amount">₽ {fmtRub(v)}</span>
+      title: 'Оборот (30д)', key: 'volume30d', align: 'right', width: 150,
+      render: (_, r) => r.stats30d.volume > 0 ? (
+        <span className="cell-amount">₽ {fmtRub(r.stats30d.volume)}</span>
       ) : <Text type="secondary">—</Text>,
-      sorter: (a, b) => a.volume30d - b.volume30d,
+      sorter: (a, b) => a.stats30d.volume - b.stats30d.volume,
     },
     {
-      title: 'Txn (30д)', dataIndex: 'txnCount30d', key: 'txnCount30d', align: 'right', width: 100,
-      render: v => v > 0 ? (
-        <Text className="mono cell-id">{fmtNum(v)}</Text>
+      title: 'Txn (30д)', key: 'txnCount30d', align: 'right', width: 100,
+      render: (_, r) => r.stats30d.txnCount > 0 ? (
+        <Text className="mono cell-id">{fmtNum(r.stats30d.txnCount)}</Text>
       ) : <Text type="secondary">—</Text>,
-      sorter: (a, b) => a.txnCount30d - b.txnCount30d,
+      sorter: (a, b) => a.stats30d.txnCount - b.stats30d.txnCount,
     },
     {
-      title: 'Успешность', dataIndex: 'successRate', key: 'successRate', align: 'right', width: 100,
-      render: v => v > 0 ? (
+      title: 'Успешность', key: 'successRate', align: 'right', width: 100,
+      render: (_, r) => r.stats30d.successRate > 0 ? (
         <Text className="mono cell-id"
           style={{
-            color: v < 92 ? '#ff4d4f' : v < 95 ? '#faad14' : undefined,
-            fontWeight: v < 92 ? 600 : undefined,
-          }}>{v}%</Text>
+            color: r.stats30d.successRate < 92 ? '#ff4d4f' : r.stats30d.successRate < 95 ? '#faad14' : undefined,
+            fontWeight: r.stats30d.successRate < 92 ? 600 : undefined,
+          }}>{r.stats30d.successRate}%</Text>
       ) : <Text type="secondary">—</Text>,
-      sorter: (a, b) => a.successRate - b.successRate,
+      sorter: (a, b) => a.stats30d.successRate - b.stats30d.successRate,
     },
     {
-      title: 'Диспуты', dataIndex: 'disputesOpen', key: 'disputesOpen', align: 'right', width: 90,
-      render: (v, r) => v > 0 ? (
+      title: 'Диспуты', key: 'disputesOpen', align: 'right', width: 90,
+      render: (_, r) => r.stats30d.disputesOpen > 0 ? (
         <Text className="mono cell-id"
           style={{
-            color: r.disputeRate > 1 ? '#ff4d4f' : r.disputeRate > 0.4 ? '#faad14' : undefined,
-            fontWeight: r.disputeRate > 1 ? 600 : undefined,
-          }}>{v} <Text type="secondary" style={{ fontSize: 10 }}>({r.disputeRate}%)</Text></Text>
+            color: r.stats30d.disputeRate > 1 ? '#ff4d4f' : r.stats30d.disputeRate > 0.4 ? '#faad14' : undefined,
+            fontWeight: r.stats30d.disputeRate > 1 ? 600 : undefined,
+          }}>{r.stats30d.disputesOpen} <Text type="secondary" style={{ fontSize: 10 }}>({r.stats30d.disputeRate}%)</Text></Text>
       ) : <Text type="secondary" className="cell-id">0</Text>,
-      sorter: (a, b) => a.disputesOpen - b.disputesOpen,
+      sorter: (a, b) => a.stats30d.disputesOpen - b.stats30d.disputesOpen,
     },
     {
       title: 'Подключён', dataIndex: 'connectedAt', key: 'connectedAt', width: 110,
@@ -319,8 +379,8 @@ export default function MerchantsPage() {
     },
   ], []);
 
-  const activeCount = merchants.filter(m => m.status === 'active').length;
-  const blockedCount = merchants.filter(m => m.status === 'blocked').length;
+  const activeCount = items.filter(m => m.status === 'active').length;
+  const blockedCount = items.filter(m => m.status === 'blocked').length;
 
   return (
     <Flex vertical gap={12} className="page">
@@ -329,18 +389,18 @@ export default function MerchantsPage() {
           <div>
             <Title level={4} style={{ margin: 0 }} className="fw-600">
               Мерчанты
-              <Tag style={{ verticalAlign: 'middle', marginLeft: 8 }}>{merchants.length}</Tag>
+              <Tag style={{ verticalAlign: 'middle', marginLeft: 8 }}>{total}</Tag>
               {blockedCount > 0 && (
                 <Tag color="error" style={{ verticalAlign: 'middle' }}>{blockedCount} заблокирован</Tag>
               )}
             </Title>
             <Text type="secondary" className="text-sm">
-              {activeCount} активных · оборот ₽{merchantsKpi.volume30d.value}M за 30 дней
+              {activeCount} активных на странице · оборот ₽{kpi.data?.volume30d.value ?? '—'}M за 30 дней
             </Text>
           </div>
           <Space size={6}>
             <Button icon={<DownloadOutlined />}>Экспорт</Button>
-            <Button icon={<ReloadOutlined />}>Обновить</Button>
+            <Button icon={<ReloadOutlined />} loading={list.isFetching} onClick={() => list.refetch()}>Обновить</Button>
             <Button type="primary" icon={<PlusOutlined />}>Новый мерчант</Button>
           </Space>
         </Flex>
@@ -348,55 +408,68 @@ export default function MerchantsPage() {
 
       <Row gutter={12}>
         <Col flex={1}>
-          <Kpi title="Всего мерчантов" value={String(merchantsKpi.total.value)}
-            trend="up" trendLabel="+14 за квартал" spark={merchantsKpi.total.spark} />
+          <Kpi title="Всего мерчантов" value={String(kpi.data?.total.value ?? '—')}
+            trend="up" trendLabel="+14 за квартал" spark={kpi.data?.total.spark ?? []} />
         </Col>
         <Col flex={1}>
-          <Kpi title="Активных" value={String(merchantsKpi.active.value)} suffix={`из ${merchantsKpi.total.value}`}
-            trend="up" trendLabel="+12 · 92% от всех" spark={merchantsKpi.active.spark} />
+          <Kpi title="Активных" value={String(kpi.data?.active.value ?? '—')} suffix={`из ${kpi.data?.total.value ?? '—'}`}
+            trend="up" trendLabel="+12 · 92% от всех" spark={kpi.data?.active.spark ?? []} />
         </Col>
         <Col flex={1}>
-          <Kpi title="Оборот (30д)" prefix="₽" value={`${merchantsKpi.volume30d.value}${merchantsKpi.volume30d.unit}`}
-            trend="up" trendLabel="+6.4% vs пред. месяц" spark={merchantsKpi.volume30d.spark} />
+          <Kpi title="Оборот (30д)" prefix="₽"
+            value={`${kpi.data?.volume30d.value ?? '—'}${kpi.data?.volume30d.unit ?? ''}`}
+            trend="up" trendLabel={kpi.data ? `+${kpi.data.volume30d.deltaPct}% vs пред. месяц` : ''}
+            spark={kpi.data?.volume30d.spark ?? []} />
         </Col>
         <Col flex={1}>
-          <Kpi title="Средний чек" prefix="₽" value={fmtNum(merchantsKpi.avgTicket.value)}
-            trend={null} trendLabel="стабильно ±2%" spark={merchantsKpi.avgTicket.spark} />
+          <Kpi title="Средний чек" prefix="₽" value={kpi.data ? fmtNum(kpi.data.avgTicket.value) : '—'}
+            trend={null} trendLabel="стабильно ±2%" spark={kpi.data?.avgTicket.spark ?? []} />
         </Col>
         <Col flex={1}>
-          <Kpi title="Диспут-рейт" value={String(merchantsKpi.disputeRate.value)} suffix="%"
-            trend="dn" trendLabel="−0.04 pp · тренд ↓" spark={merchantsKpi.disputeRate.spark} accent="primary" />
+          <Kpi title="Диспут-рейт" value={String(kpi.data?.disputeRate.value ?? '—')} suffix="%"
+            trend="dn" trendLabel={kpi.data ? `${kpi.data.disputeRate.deltaPp} pp · тренд ↓` : ''}
+            spark={kpi.data?.disputeRate.spark ?? []} accent="primary" />
         </Col>
       </Row>
 
       <FilterBar />
 
+      {list.isError && (
+        <Alert type="error" showIcon
+          message="Не удалось загрузить мерчантов"
+          description={String(list.error)}
+          action={<Button size="small" onClick={() => list.refetch()}>Повторить</Button>}
+        />
+      )}
+
       <Card className="table-card"
         title={
           <Flex justify="space-between" align="center">
-            <span>Мерчанты <Tag>{merchants.length}</Tag></span>
+            <span>Мерчанты <Tag>{total}</Tag></span>
             <Text type="secondary" className="table-subtitle">
-              Сортировка по обороту ↓ · показано {merchants.length}
+              Сортировка по обороту ↓ · показано {items.length}
             </Text>
           </Flex>
         }
       >
         <Table
           columns={columns}
-          dataSource={merchants}
+          dataSource={items}
           rowKey="id"
           size="small"
+          loading={list.isLoading}
           pagination={{
-            pageSize: 20, total: 312, showSizeChanger: true,
+            current: page, pageSize: PAGE_SIZE, total, showSizeChanger: false,
+            onChange: setPage,
             showTotal: (t, [a, b]) => `${a}–${b} из ${t.toLocaleString('ru-RU')}`,
           }}
-          rowClassName={(r) => r.id === selected?.id ? 'ant-table-row-selected' : ''}
-          onRow={r => ({ onClick: () => setSelected(r) })}
+          rowClassName={(r) => r.id === selectedId ? 'ant-table-row-selected' : ''}
+          onRow={r => ({ onClick: () => setSelectedId(r.id) })}
           scroll={{ x: 'max-content' }}
         />
       </Card>
 
-      <MerchantPanel merchant={selected} onClose={() => setSelected(null)} />
+      <MerchantPanel id={selectedId} onClose={() => setSelectedId(null)} />
     </Flex>
   );
 }

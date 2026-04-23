@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { ConfigProvider, App as AntApp, Spin } from 'antd';
 import ruRU from 'antd/locale/ru_RU';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 import { makeBrandTheme, type ThemeMode } from './theme';
@@ -16,6 +17,7 @@ import {
 } from './pages/skeletons';
 import * as keycloak from './auth/keycloak';
 import type { UserProfile } from './auth/keycloak';
+import { queryClient } from './api/queryClient';
 import './index.css';
 
 dayjs.locale('ru');
@@ -109,8 +111,22 @@ function Root() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <Root />
-  </React.StrictMode>
-);
+async function enableMocking() {
+  if (!import.meta.env.DEV) return;
+  if (import.meta.env.VITE_MSW_ENABLED === 'false') return;
+  const { worker } = await import('./mocks/browser');
+  await worker.start({
+    onUnhandledRequest: 'bypass',
+    serviceWorker: { url: '/mockServiceWorker.js' },
+  });
+}
+
+enableMocking().then(() => {
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <Root />
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+});
